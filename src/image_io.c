@@ -15,25 +15,166 @@ typedef struct {
 } PPMImage;
 
 
-int get_file(char* imagedir){
+char *get_file(){
 	//char imagedir[512];
+
 	char	dirbvdir[550];
+	char 	dircwd[512];
 	char	fname[30];
-	if (getcwd(imagedir, sizeof(imagedir)) != NULL) {
-		printf("Current working dir: %s\n", imagedir);
+	if (getcwd(dircwd, sizeof(dircwd)) != NULL) {
+		printf("Current working dir: %s\n", dircwd);
 	} else {
 		perror("getcwd() error\n");
 		return -1;
 	}
-	sprintf(dirbvdir, "ls %s | grep .ppm", imagedir);
+	sprintf(dirbvdir, "ls %s | grep .ppm", dircwd);
 	system(dirbvdir);
 	printf("--------------------\nBild lesen::Dateiname (ohne '.ext'!) : ");
 	scanf("%s", &fname);
+	strcpy(dirbvdir,dircwd);
 	strcat(fname, ".ppm");
-	strcat(imagedir, "/");
-	strcat(imagedir, fname);
-	printf("%s\n",imagedir);
+	strcat(dirbvdir, "/");
+	strcat(dirbvdir, fname);
+	//printf("%s\n",dirbvdir);
+
+	return strdup(dirbvdir);
+}
+
+
+int readImage_ppm(unsigned char imgage[MAXXDIM][MAXYDIM])
+{
+
+	char *filename = NULL;
+	char buff[16];
+	if(!(filename = get_file())){
+		printf("cant get filename\n");
+		goto error;
+	}
+	PPMImage *img;
+	FILE *fp;
+	int c, rgb_comp_color;
+	//open PPM file for reading
+
+	printf("filename... %s\n",filename);
+	fp = fopen(filename, "rb");
+	if (!fp) {
+		printf("Unable to open file\n");
+		goto error;
+	}
+
+	//read image format);
+	if (!fgets(buff, sizeof(buff), fp)) {
+		printf("error read image format\n");
+		goto error;
+	}
+    //check the image format
+	 /*
+    if (buff[0] != 'P' || buff[1] != '6') {
+         fprintf(stderr, "Invalid image format (must be 'P6')\n");
+         exit(1);
+    }
+    */
+    // binary ppm
+     //check for comments
+	c = getc(fp);
+	while (c == '#') {
+	while (getc(fp) != '\n') ;
+		c = getc(fp);
+	}
+	ungetc(c, fp);
+	// Alloc image data
+	img = (PPMImage *)malloc(sizeof(PPMImage));
+	if (!img) {
+		printf("Unable to allocate memory\n");
+		goto error;
+	}
+
+	//read image size information
+	if (fscanf(fp, "%d %d", &img->x, &img->y) != 2) {
+		printf("Invalid image size (error loading')\n");
+		goto error;
+	}
+	//read rgb component
+	if (fscanf(fp, "%d", &rgb_comp_color) != 1) {
+		printf("Invalid rgb component (error loading)\n");
+		goto error;
+	}
+	//check rgb component depth
+	if (rgb_comp_color!= RGB_COMPONENT_COLOR) {
+		printf("does not have 8-bits components\n");
+		goto error;
+	}
+	while (fgetc(fp) != '\n') ;
+	if(buff[0] == 'P' && buff[1] == '6'){
+		//memory allocation for pixel data
+		img->data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
+
+		if (!img->data) {
+			printf("Unable to allocate memory\n");
+			goto error2;
+		}
+
+		//read pixel data from file
+		printf("read binary file\n");
+		if (fread(img->data, 3 * img->x, img->y, fp) != img->y) {
+			printf("Error loading image \n");
+			goto error3;
+		}
+		fclose(fp);
+		unsigned int i = 0;
+		printf("calculate grey scale\n");
+        for(int x = 0; x < MAXXDIM; x++){
+        	for(int y = 0; y < MAXYDIM; y++){
+        		imgage[x][y] = (char)
+        				(
+        				((double)img->data[i].red * 0.2126) +
+        				((double)img->data[i].green * 0.7152) +
+						((double)img->data[i].blue * 0.0722)
+						);
+        		++i;
+        	}
+        }
+        goto success_binary;
+
+    }
+    // ascii ppm
+    else if(buff[0] == 'P' && buff[1] == '3'){
+    	int r,g,b;
+		// Bilddaten lesen ...
+		for (int i = 0; i < MAXXDIM; i++) {
+			for (int j = 0; j < MAXYDIM; j++) {
+				fscanf(fp, "%d", &r);
+				fscanf(fp, "%d", &g);
+				fscanf(fp, "%d", &b);
+        		imgage[i][j] = (char)(((double)r * 0.2126) +
+        				((double)g * 0.7152) +
+						((double)b * 0.0722));
+			}
+		}
+    	goto success;
+    }
+error3:
+	free(img->data);
+error2:
+	free(img);
+error:
+	free(filename);
+	printf("Fehler beim einlesen ...\nPress Key\n");
+	getch_(0);
+	getch_(0);
+	return -1;
+
+success_binary:
+	free(img->data);
+	free(img);
+success:
+	free(filename);
+	fclose(fp);
+	printf("Bild wurde eingelesen ...\nPress Key\n");
+	getch_(0);
+	getch_(0);
 	return 0;
+
 }
 
 
@@ -83,144 +224,6 @@ int readImage_ppm(unsigned char img[MAXXDIM][MAXYDIM])
 	return 0;
 }
 */
-int readImage_ppm(unsigned char imgage[MAXXDIM][MAXYDIM])
-{
-	char imagedir[512];
-	char *ptr = imagedir[0];
-	int stage=0;
-	printf("stage %i\n",stage++);
-	char *filename;
-	char buff[16];
-	if(get_file(ptr)){
-		printf("failed to get filename\n");
-		return -1;
-	}
-
-	PPMImage *img;
-	FILE *fp;
-	int c, rgb_comp_color;
-	//open PPM file for reading
-	printf("stage %i\n",stage++);
-	fp = fopen(filename, "rb");
-	if (!fp) {
-		fprintf(stderr, "Unable to open file '%s'\n", filename);
-		exit(1);
-	}
-
-	//read image format
-	printf("stage %i\n",stage++);
-	if (!fgets(buff, sizeof(buff), fp)) {
-		perror(filename);
-		exit(1);
-	}
-
-    //check the image format
-	 /*
-    if (buff[0] != 'P' || buff[1] != '6') {
-         fprintf(stderr, "Invalid image format (must be 'P6')\n");
-         exit(1);
-    }
-    */
-    // binary ppm
-     //check for comments
-	printf("stage %i\n",stage++);
-     c = getc(fp);
-     while (c == '#') {
-     while (getc(fp) != '\n') ;
-          c = getc(fp);
-     }
-     printf("stage %i\n",stage++);
-     ungetc(c, fp);
-     //read image size information
-     if (fscanf(fp, "%d %d", &img->x, &img->y) != 2) {
-          fprintf(stderr, "Invalid image size (error loading '%s')\n", filename);
-          return -1;
-     }
-     printf("stage %i\n",stage++);
-     //read rgb component
-     if (fscanf(fp, "%d", &rgb_comp_color) != 1) {
-          fprintf(stderr, "Invalid rgb component (error loading '%s')\n", filename);
-          return -1;
-     }
-     printf("stage %i\n",stage++);
-     //check rgb component depth
-     if (rgb_comp_color!= RGB_COMPONENT_COLOR) {
-          fprintf(stderr, "'%s' does not have 8-bits components\n", filename);
-          return -1;
-     }
-     printf("stage %i\n",stage++);
-     while (fgetc(fp) != '\n') ;
-
-     printf("stage %i\n",stage++);
-     if(buff[0] == 'P' && buff[1] == '6'){
-        //alloc memory form image
-    	 printf("allocate first shit\n");
-		img = (PPMImage *)malloc(sizeof(PPMImage));
-		if (!img) {
-			fprintf(stderr, "Unable to allocate memory\n");
-			return -1;
-		}
-
-
-		//memory allocation for pixel data
-		printf("allocate second shit\n");
-		img->data = (PPMPixel*)malloc(img->x * img->y * sizeof(PPMPixel));
-
-		if (!img) {
-			fprintf(stderr, "Unable to allocate memory\n");
-			return -1;
-		}
-
-		//read pixel data from file
-		printf("read binary file\n");
-		if (fread(img->data, 3 * img->x, img->y, fp) != img->y) {
-			fprintf(stderr, "Error loading image '%s'\n", filename);
-			exit(1);
-		}
-		fclose(fp);
-		unsigned int i = 0;
-		printf("calculate grey scale\n");
-        for(int x = 0; x < MAXXDIM; x++){
-        	for(int y = 0; y < MAXYDIM; y++){
-        		imgage[x][y] = (char)
-        				(
-        				((double)img->data[i].red * 0.2126) +
-        				((double)img->data[i].green * 0.7152) +
-						((double)img->data[i].blue * 0.0722)
-						);
-        		++i;
-        	}
-        }
-        free(img->data);
-        free(img);
-        printf("Bild wird eingelesen ...\nPress Key\n");
-        getch_(0);
-        return 0;
-
-    }
-    // ascii ppm
-    else if(buff[0] == 'P' && buff[1] == '3'){
-    	int r,g,b;
-		// Bilddaten lesen ...
-		for (int i = 0; i < MAXXDIM; i++) {
-			for (int j = 0; j < MAXYDIM; j++) {
-				fscanf(fp, "%d", &r);
-				fscanf(fp, "%d", &g);
-				fscanf(fp, "%d", &b);
-        		imgage[i][j] = (char)(((double)r * 0.2126) +
-        				((double)g * 0.7152) +
-						((double)b * 0.0722));
-			}
-		}
-
-    	fclose(fp);
-    	printf("Bild wird eingelesen ...\nPress Key\n");
-    	getch_(0);
-    	return 0;
-    }
-    return -1;
-
-}
 
 int writeImage_ppm(unsigned char img[MAXXDIM][MAXYDIM], int xdim, int ydim)
 {
@@ -271,7 +274,7 @@ int writeImage_ppm(unsigned char img[MAXXDIM][MAXYDIM], int xdim, int ydim)
 	}
 	fclose(fpimage);
 	printf("Bild wird gespeichert ...");
-	sleep(2);
+	getch_(0);
 	getch_(0);
 	return 0;
 }

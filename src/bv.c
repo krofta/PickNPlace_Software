@@ -911,11 +911,11 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 	int iterationen = 5;
 	float ink_bereich = (float)intervall / (float)iterationen;
 	for (int iter = 0; iter < iterationen; iter++){
-		system("cls");
+		cls();
 		printf("Bitte warten: Iteration %3i von %3i", iter + 1, iterationen);
 		bereich = (int)((float)(iter + 1)*ink_bereich);
 		unsigned int blob = 0;
-		for (int x = 1; x < MAXXDIM; x++)
+		for (int x = 1; x < MAXXDIM; x++){
 			for (int y = 1; y < MAXYDIM; y++) {
 				//<----- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) > bereich    -> x_c = neues Label
 				if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) > bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) > bereich && iter == 0)
@@ -939,7 +939,7 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 					int l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
 					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
 						(int)sqrt(pow(img2[x][y] - img2[x][y - l_extend], 2)) <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
-						(int)sqrt(pow(img2[x][y] - img2[x - l_extend][y], 2)) <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
+						(int)sqrt(pow(img2[x][y] - img2[x - l_extend][y], 2)) <= bereich && // L-Maske verlängern -> immernoch im Bereich?
 						x > l_extend && y > l_extend && keine_fransen == 1) {
 						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
 						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
@@ -968,7 +968,8 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 					iIMG[x][y] = iIMG[x - 1][y];
 				}
 			}
-		// R�nder der Merkermatrix markieren
+		}
+		// Ränder der Merkermatrix markieren
 		for (int x = 0; x < MAXXDIM; x++)
 			for (int y = 0; y < MAXYDIM; y++)
 				if (!(x == 0 || y == 0))
@@ -1005,20 +1006,17 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 		}
 	}
 	writeImage_ppm(img2, MAXXDIM, MAXYDIM);
-	system("cls");
+	cls();
 	printf("Anzahl der Blobs: %i\n", (max - null_labels));
 	printf("Druecken Sie eine beliebige Taste zum fortfahren.\n");
 	getch();
 	fflush(stdin);
 }
 
-// Blob-Coloring mit L�sung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
-void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
-{
+unsigned int find_blobs(unsigned char img[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich){
 	init_iMatrix(iIMG);
-	init_cMatrix(img2, 0);
 	unsigned int blob = 0;
-	for (int x = 1; x < MAXXDIM; x++)
+	for (int x = 1; x < MAXXDIM; x++){
 		for (int y = 1; y < MAXYDIM; y++)
 		{
 			//       Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) > bereich    -> x_c = neues Label
@@ -1028,13 +1026,13 @@ void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned 
 			else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) <= bereich) {
 				//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
 				if (iIMG[x - 1][y] != iIMG[x][y - 1]){
-					// Label �berscheiben! H�herwertiges Label wird �berschrieben, da dies falsch inkrementiert wurde
+					// Label überscheiben! Höherwertiges Label wird überschrieben, da dies falsch inkrementiert wurde
 					--blob;
 					int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
 					int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
 					reset_blob_label(iIMG, old_label, new_label);
 				}
-				// nun gew�nlich x_u, x_c zuweisen
+				// nun gewönlich x_u, x_c zuweisen
 				iIMG[x][y] = iIMG[x - 1][y];
 			}
 			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) > bereich
@@ -1044,8 +1042,17 @@ void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned 
 			else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) > bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) <= bereich) 
 				iIMG[x][y] = iIMG[x - 1][y];
 		}
+	}
+	return blob;
+}
+
+// Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
+void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
+{
+	find_blobs(img,iIMG, bereich);
 	// Blob-Coloring nur als Bild schreiben, wenn es direkt aus dem Menu aufgreufen wird
-	// handelt es sich um ein Bin�rbild ?
+	// handelt es sich um ein Binaerbild ?
+	init_cMatrix(img2, 0);
 	if (writeImage == 1) {
 		int max = find_abs_extremum_iMatrix(MAX, iIMG);
 		float faktor = (float)(PIXEL_DEPTH - 1) / (float)max;
@@ -1168,10 +1175,110 @@ void schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
 	else{
 		printf("No Blob found\n");
 		printf("Press key to continue\n");
+		gletch_(0);
 	}
-	getch();
+}
+// Annahme: Der groesste Blob ist der Hintergrund
+// Der zweitgroesste Blob ist das Hauptobjekt des Bildes
+// Alle anderen werden dem Hintergrund gleich gemacht
+// Der Hintergrund wird mit 255 markiert
+// Das Objekt mit 0
+
+typedef struct {
+     unsigned int blob_label;
+     unsigned int blob_size;
+} Blob;
+
+void bubblesort_blob(Blob *blobs, int length)
+{
+	for (int i = 0; i < length - 1; ++i)
+		for (int j = 0; j < length - i - 1; ++j)
+			if (blobs[j].blob_size > blobs[j + 1].blob_size) {
+				Blob tmp;
+				tmp.blob_size= blobs[j].blob_size;
+				tmp.blob_label= blobs[j].blob_label;
+				blobs[j].blob_size = blobs[j + 1].blob_size;
+				blobs[j].blob_label = blobs[j + 1].blob_label;
+				blobs[j + 1].blob_size = tmp.blob_size;
+				blobs[j + 1].blob_label = tmp.blob_label;
+			}
 }
 
+
+
+void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
+	// Marker Matrix mit 0 initialisieren
+	memset(iIMG,0,sizeof(iIMG));
+	// Als erstes Oberhalb des Schwellwertes alle Pixel auf 255 schreiben
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			if((img[x][y] >= background_threshold))
+				img[x][y] = 255;
+	// markiere alle blobs (farbabstufungbeim erreichnen 10)
+	unsigned int max_blob = find_blobs(img,iIMG,5);
+	printf("blob count %i\n",max_blob);
+
+	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
+	Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
+	// Blosgroessen und das entsprechende Label ermitteln
+	for (int x = 0; x < MAXXDIM; x++){
+		for (int y = 0; y < MAXYDIM; y++){
+			blobs[iIMG[x][y]].blob_size++;
+			blobs[iIMG[x][y]].blob_label = iIMG[x][y];
+		}
+	}
+	// den groessten Blob finden
+	Blob biggest_blob;
+	memset(&biggest_blob,sizeof(Blob),0);
+	for(int i = 0; i < (max_blob+1); i++){
+		if(blobs[i].blob_size > biggest_blob.blob_size){
+			biggest_blob.blob_size = blobs[i].blob_size;
+			biggest_blob.blob_label = blobs[i].blob_label;
+		}
+	}
+	// Alle Blobs löschen ausser den Hintergrund und das Objekt
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			if(iIMG[x][y] == biggest_blob.blob_label)// Hintergrund
+				img[x][y] = 255;
+			else if(blobs[iIMG[x][y]].blob_size > min_blobsize)	// Objekt
+				img[x][y] = 0;
+			else
+				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
+	free(blobs);
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+
+}
+/*
+void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold){
+	int biggest_blob = 0;
+	int greyscale = 0;
+	int abs_px[PIXEL_DEPTH];
+	printf("calc histo\n");
+	calc_absolut_histo(img,abs_px);
+	printf("calc color of biggest blobs\n");
+	for(int i = 0; i < PIXEL_DEPTH; i++){
+		if(i >= background_threshold)
+			continue;
+		if(abs_px[i] > biggest_blob){
+			biggest_blob = abs_px[i];
+			greyscale = i;
+		}
+	}
+	printf("Goesster Blob:         %i\n",biggest_blob);
+	printf("Goesster Blob Farbe:   %i\n",greyscale);
+	// Alle blobs loeschen, die nicht zu den beiden groessten gehoeren
+	printf("delete other blobs\n");
+	for (int x = 0; x < MAXXDIM; x++){
+		for (int y = 0; y < MAXYDIM; y++){
+			if((img[x][y] >= background_threshold) || (img[x][y] != greyscale)){
+				img[x][y] = 255;
+			}
+		}
+	}
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+}
+*/
 
 
 

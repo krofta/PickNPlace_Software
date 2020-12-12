@@ -1164,7 +1164,7 @@ void menu_textur(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM
 
 }
 
-void print_menu_segmentierung(int threshold, int intervall[3], int blob_label)
+void print_menu_segmentierung(int threshold, int intervall[3], int blob_label, int background)
 {
 	cls();
 	setColor(FOREGROUND_RED);
@@ -1179,7 +1179,8 @@ void print_menu_segmentierung(int threshold, int intervall[3], int blob_label)
 	printf("  3. Blob-Coloring 1 GW:Marker (Bereich)       :  \n");
 	printf("  4. Blob-Coloring 2 GW:Image  (Bereich)       :  \n");
 	printf("  5. Blob-Coloring 3 GW:Image  (Bereich)       :  \n");
-	printf("  6. Schwerpunkt                   Blob Label:    \n");
+	printf("  6. Schwerpunkt                     Blob Label:  \n");
+	printf("  6. Groesster Blob                 Hintergrund:  \n");
 	printf("\n");
 	printline();
 	printf("  Pfeiltaste    w/s       = Auswahl                \n");
@@ -1188,7 +1189,7 @@ void print_menu_segmentierung(int threshold, int intervall[3], int blob_label)
 	printf("  q                       = Zurueck                \n");
 	printf("  h                       = Info zur Funktion      \n");
 	printline();
-	char buf[5];
+	char buf[10];
 	setCursor(START_CURSOR_LINE, 49);
 	//itoa(threshold, buf, 10);
 	sprintf(buf,"%i",threshold);
@@ -1201,6 +1202,9 @@ void print_menu_segmentierung(int threshold, int intervall[3], int blob_label)
 	}
 	setCursor(START_CURSOR_LINE + 5, 49);
 	sprintf(buf,"%i",blob_label);
+	fputs(buf, stdout);
+	setCursor(START_CURSOR_LINE + 6, 49);
+	sprintf(buf,"%i",background);
 	fputs(buf, stdout);
 }
 void menu_segmentierung_help(int HelpFunc)
@@ -1258,6 +1262,11 @@ void menu_segmentierung_help(int HelpFunc)
 		printf("  Berechnet den Flächenschwerpunkt eines Blobs\n");
 		printf("  Markiert die BoundaryBox des Blobs\n");
 		break;
+	case 6:
+		printf("  6. Groessten Blob suchen  \n");
+		printf("  Sucht den groessten Blob unter bruecksichtung\n");
+		printf("  des zu ignorierenden Hintergrunds\n");
+		break;
 	default:
 		return;
 	}
@@ -1278,13 +1287,14 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 	int wahl = 0;
 	int cursorLine = 0;
 	int threshold = 127;
-	int blob_label = 255;
+	int blob_label = 0;
+	int background = 255;
 	int intervall[3] = { 10,10,10 };
-	char buf[5];
-	print_menu_segmentierung(threshold, intervall, blob_label);
+	char buf[20];
+	print_menu_segmentierung(threshold, intervall, blob_label,background);
 	while (wahl != KEY_ESC)
 	{
-		setCursor(cursorLine + START_CURSOR_LINE, 48);
+		setCursor(cursorLine + START_CURSOR_LINE, 49);
 			wahl = getch();
 			switch (wahl)
 			{
@@ -1294,37 +1304,43 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 				break;
 
 			case KEY_ARROW_DOWN:
-				if (cursorLine<5)
+				if (cursorLine<6)
 					cursorLine++;
 				break;
 			case KEY_ARROW_LEFT:
-				if (threshold > 1 && cursorLine == 0){
+				if (threshold > 0 && cursorLine == 0){
 					//itoa(--threshold, buf, 10);
 					sprintf(buf,"%i",--threshold);
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
-				if (intervall[0] > 1 && cursorLine == 2) {
+				if (intervall[0] > 0 && cursorLine == 2) {
 					//itoa(--intervall[0], buf, 10);
 					sprintf(buf,"%i",--intervall[0]);
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
-				if (intervall[1] > 1 && cursorLine == 3) {
+				if (intervall[1] > 0 && cursorLine == 3) {
 					//itoa(--intervall[1], buf, 10);
 					sprintf(buf,"%i",--intervall[1]);
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
-				if (intervall[2] > 1 && cursorLine == 4) {
+				if (intervall[2] > 0 && cursorLine == 4) {
 					//itoa(--intervall[2], buf, 10);
 					sprintf(buf,"%i",--intervall[2]);
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
-				if (blob_label > 1 && cursorLine == 5) {
+				if (blob_label > 0 && cursorLine == 5) {
 					//itoa(--intervall[2], buf, 10);
 					sprintf(buf,"%i",--blob_label);
+					strcat(buf, "    ");
+					fputs(buf, stdout);
+				}
+				if (background > 0 && cursorLine == 6) {
+					//itoa(--intervall[2], buf, 10);
+					sprintf(buf,"%i",--background);
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
@@ -1353,6 +1369,12 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 				if (blob_label < 255 && cursorLine == 5) {
 					//itoa(--intervall[2], buf, 10);
 					sprintf(buf,"%i",++blob_label);
+					strcat(buf, "    ");
+					fputs(buf, stdout);
+				}
+				if (background < 255 && cursorLine == 6) {
+					//itoa(--intervall[2], buf, 10);
+					sprintf(buf,"%i",++background);
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
@@ -1385,13 +1407,17 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					cls();
 					schwerpunkt(img, blob_label);
 					break;
+				case 6:
+					cls();
+					biggestBlob(img,iIMG, background,1000);
+					break;
 				default:break;
 				}
-				print_menu_segmentierung(threshold, intervall, blob_label);
+				print_menu_segmentierung(threshold, intervall, blob_label, background);
 				break;
 			case KEY_F1:
 				menu_segmentierung_help(cursorLine);
-				print_menu_segmentierung(threshold, intervall, blob_label);
+				print_menu_segmentierung(threshold, intervall, blob_label,background);
 				break;
 			}
 		}
