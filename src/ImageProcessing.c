@@ -1397,15 +1397,15 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 3:
 					cls();
-					blob_coloring_imagesensitiv(img, img2, iIMG, intervall[1],0, 1);
+					blob_coloring_imagesensitiv(img, img2, iIMG, intervall[1],1, 1,1);
 					break;
 				case 4:
 					cls();
-					blob_coloring_imagesensitiv(img, img2, iIMG, intervall[2],1,1);
+					blob_coloring_imagesensitiv(img, img2, iIMG, intervall[2],1,1,1);
 					break;
 				case 5:
 					cls();
-					schwerpunkt(img, blob_label);
+					zeige_schwerpunkt(img, blob_label);
 					break;
 				case 6:
 					cls();

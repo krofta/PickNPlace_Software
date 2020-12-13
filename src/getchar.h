@@ -11,7 +11,6 @@
 #include <termios.h>
 #include <stdio.h>
 
-static struct termios old, current;
 
 /* Initialize new terminal i/o settings */
 void initTermios(int echo);

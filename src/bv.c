@@ -1,5 +1,6 @@
 #include "image_io.h"
 #include <stdio.h>
+#include <string.h>
 #include <termios.h>
 #include <stdlib.h>
 #include <math.h>
@@ -92,7 +93,7 @@ void get_bin_koeff(float bin_ver[50], int n, float normierung)
 {
 	if (n > 50)
 		return;
-	float prev_gauss[50];
+	//float prev_gauss[50];
 
 	for (int k = 0; k <= n; k++)		// n �ber k = n!/(n-k)!*k!
 		bin_ver[k] = (float)fakultaet(n) / (float)(fakultaet(n - k) * fakultaet(k));
@@ -903,12 +904,12 @@ void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img
 }
 
 // Blob-Coloring mit L�sung der Ausfransungen, mit Iterationsverfahren zum Verbessern der Segmentierung
-void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int intervall, int keine_fransen, int writeImage)
+void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
+		int intervall, int keine_fransen, int writeImage, int iterationen)
 {
 	int bereich = 5, max = 0, null_labels = 0;
 	init_cMatrix(img2, 0);
 	init_iMatrix(iIMG);
-	int iterationen = 5;
 	float ink_bereich = (float)intervall / (float)iterationen;
 	for (int iter = 0; iter < iterationen; iter++){
 		cls();
@@ -1126,56 +1127,72 @@ void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDI
 	getch();
 }
 
-void schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
-	unsigned int px_count = 0;
-	unsigned long int schwerpunkt_x = 0, schwerpunkt_y = 0;
-	int min_x = 255, max_x = 0, min_y = 255, max_y = 0;
+Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
+	Schwerpunkt s;
+	memset(&s,0,sizeof(Schwerpunkt));
+	s.boundary_box.x1 = MAXXDIM;
+	s.boundary_box.y1 = MAXYDIM;
+	double sx = 0, sy = 0;
 	for (int x = 0; x < MAXXDIM; x++){
 		for (int y = 0; y < MAXYDIM; y++){
 			if(img[x][y] == bloblabel){
-				++px_count;
+				++s.A;
 				// für boundary box
-				min_x = x < min_x ? x : min_x;
-				max_x = x > max_x ? x : max_x;
-				min_y = y < min_y ? y : min_y;
-				max_y = y > max_y ? y : max_y;
+				s.boundary_box.x1 = x < s.boundary_box.x1 ? x : s.boundary_box.x1;
+				s.boundary_box.x2 = x > s.boundary_box.x2 ? x : s.boundary_box.x2;
+				s.boundary_box.y1 = y < s.boundary_box.y1 ? y : s.boundary_box.y1;
+				s.boundary_box.y2 = y > s.boundary_box.y2 ? y : s.boundary_box.y2;
 				// für flächenschwerpunkt
-				schwerpunkt_x += x;
-				schwerpunkt_y += y;
+				// +0,5 weil der 0. Pixel einen abstand zu 0 von 0,5 hat.
+				sx += (double)x+0.5;
+				sy += (double)y+0.5;
 			}
 		}
 	}
-	if(px_count > 0){
-		schwerpunkt_x /= px_count;
-		schwerpunkt_y /= px_count;
+	if(s.A > 0){
+		sx /= (double)s.A;
+		sy /= (double)s.A;
+	}
+	s.x = (unsigned int)sx;
+	s.y = (unsigned int)sy;
+	return s;
+}
 
+void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
+	Schwerpunkt s = schwerpunkt(img, bloblabel);
+	if(s.A > 0){
+		// Test direkt momente Berechnen
+		Momente m = widerstandsmomente(img, &s.boundary_box, (unsigned int) bloblabel);
+		printf("Ix: %i\n",m.Ix);
+		printf("Iy: %i\n",m.Iy);
+		printf("Ixy: %i\n",m.Ixy);
 
 		//Markiere Schwerpunkt im Bild
 		for(int x = 0; x< MAXXDIM; x++)
-			img[x][schwerpunkt_y] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[x][s.y] = (char)bloblabel - (PIXEL_DEPTH/2);
 		for(int y = 0; y< MAXXDIM; y++)
-			img[schwerpunkt_x][y] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[s.x][y] = (char)bloblabel - (PIXEL_DEPTH/2);
 
 		// Boundary Box im Bild Markieren
-		for(int x = min_x; x <= max_x; x++){
-			img[x][min_y] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[x][max_y] = (char)bloblabel - (PIXEL_DEPTH/2);
+		for(int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
+			img[x][s.boundary_box.y1] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[x][s.boundary_box.y2] = (char)bloblabel - (PIXEL_DEPTH/2);
 		}
-		for(int y = min_y; y <= max_y; y++){
-			img[min_x][y] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[max_x][y] = (char)bloblabel - (PIXEL_DEPTH/2);
+		for(int y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
+			img[s.boundary_box.x1][y] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[s.boundary_box.x2][y] = (char)bloblabel - (PIXEL_DEPTH/2);
 		}
-		printf("Schwerpunkt x: %i\n", schwerpunkt_x);
-		printf("Schwerpunkt y: %i\n", schwerpunkt_y);
-		printf("P1(%i,%i)P2(%i,%i)P3(%i,%i)P4(%i,%i)\n", min_x, min_y, max_x, min_y, max_y, min_x, max_x, max_y);
-		printf("Fläche       : %i\n", px_count);
+		printf("Schwerpunkt x: %i\n", s.x);
+		printf("Schwerpunkt y: %i\n", s.y);
+		printf("P1(%i,%i)P2(%i,%i)P3(%i,%i)P4(%i,%i)\n", s.boundary_box.x1, s.boundary_box.y1, s.boundary_box.x2, s.boundary_box.y1, s.boundary_box.y2, s.boundary_box.x1, s.boundary_box.x2, s.boundary_box.y2);
+		printf("Fläche       : %i\n", s.A);
 		printf("Press key to save result\n");
 		writeImage_ppm(img, MAXXDIM, MAXYDIM);
 	}
 	else{
 		printf("No Blob found\n");
 		printf("Press key to continue\n");
-		gletch_(0);
+		getch_(0);
 	}
 }
 // Annahme: Der groesste Blob ist der Hintergrund
@@ -1184,10 +1201,7 @@ void schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
 // Der Hintergrund wird mit 255 markiert
 // Das Objekt mit 0
 
-typedef struct {
-     unsigned int blob_label;
-     unsigned int blob_size;
-} Blob;
+
 
 void bubblesort_blob(Blob *blobs, int length)
 {
@@ -1203,8 +1217,6 @@ void bubblesort_blob(Blob *blobs, int length)
 				blobs[j + 1].blob_label = tmp.blob_label;
 			}
 }
-
-
 
 void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
 	// Marker Matrix mit 0 initialisieren
@@ -1229,7 +1241,7 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 	}
 	// den groessten Blob finden
 	Blob biggest_blob;
-	memset(&biggest_blob,sizeof(Blob),0);
+	memset(&biggest_blob,0,sizeof(Blob));
 	for(int i = 0; i < (max_blob+1); i++){
 		if(blobs[i].blob_size > biggest_blob.blob_size){
 			biggest_blob.blob_size = blobs[i].blob_size;
@@ -1249,6 +1261,38 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 	writeImage_ppm(img, MAXXDIM, MAXYDIM);
 
 }
+
+Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Box *boundary_box, unsigned int object_label){
+	// Widerstandsmoment I_x: Summe(x^2*dA)
+	Momente m;
+	memset(&m,0,sizeof(Momente));
+	//double Ix = 0, Iy = 0, Ixy = 0;
+	long int tmp = 0;
+	for(int x = boundary_box->x1; x <= boundary_box->x2; x++){
+		for(int y = boundary_box->y1; y <= boundary_box->y2; y++){
+			// dA ist immer 1, da ein Pixel ein dA darstellt
+			if(img[x][y] == object_label){
+				tmp = ((x*10 + 5) -  (boundary_box->x1*10));
+				m.Ix += tmp * tmp;
+				tmp = ((y*10 + 5) -  (boundary_box->y1*10));
+				m.Iy += tmp * tmp;
+				m.Ixy += (((x*10) + 5) -  (boundary_box->x1*10)) * (((y*10) + 0.5) -  (boundary_box->y1*10));
+				/*
+				Ix += pow((((double)x + 0.5) -  (double)boundary_box->x1),2);
+				Iy += pow((((double)y + 0.5) -  (double)boundary_box->y1),2);
+				Ixy += (((double)x + 0.5) -  (double)boundary_box->x1) * (((double)y + 0.5) -  (double)boundary_box->y1);
+				*/
+			}
+		}
+	}
+	m.Ixy *= -1;
+	m.Ix /= 10;
+	m.Iy /= 10;
+	m.Ixy /= 10;
+	return m;
+}
+
+
 /*
 void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold){
 	int biggest_blob = 0;
