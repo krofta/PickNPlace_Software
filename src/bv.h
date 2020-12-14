@@ -74,7 +74,7 @@ void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabe
 Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
 Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label);
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
-double rotation(Momente m);
+double orientierung(Momente m);
 
 // Anderes
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val);

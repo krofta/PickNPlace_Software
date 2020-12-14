@@ -1234,7 +1234,10 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 	printf("blob count %i\n",max_blob);
 
 	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
-	Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
+	//Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
+	Blob *blobs = (Blob*)malloc((max_blob*  sizeof(Blob)) +1);
+	printf("holla");
+	memset(blobs, 0, max_blob);
 	// Blosgroessen und das entsprechende Label ermitteln
 	for (int x = 0; x < MAXXDIM; x++){
 		for (int y = 0; y < MAXYDIM; y++){
@@ -1260,6 +1263,7 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 				img[x][y] = 0;
 			else
 				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
+	printf("holla");
 	free(blobs);
 	writeImage_ppm(img, MAXXDIM, MAXYDIM);
 
@@ -1307,7 +1311,7 @@ Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, un
 	return m;
 }
 
-double rotation(Momente m){
+double orientierung(Momente m){
 	// Drehung der Hauptachsen tan(2a)=(2*Ixy)/(Iy-Ix)
 	double x = ((double)m.Ixy*2)/(((double)m.Iy) - ((double)m.Ix));
 	double erg = atan(x)/2.0;
@@ -1319,15 +1323,32 @@ void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_lab
 	Schwerpunkt s = schwerpunkt(img, object_label);
 	printf("Schwerpunkt x/y: %u %u \n", s.x, s.y);
 	Momente m = widerstandsmomente(img, s, object_label);
-	double r = rotation(m);
+	double r = orientierung(m);
 	printf("Ix %li\n",m.Ix);
 	printf("Iy %li\n",m.Iy);
 	printf("Ixy %li°\n",m.Ixy);
 	printf("Rotation des Körpers %2.3lf°\n",r);
 	printf("Press key...\n");
-	writeImage_ppm(img,MAXXDIM, MAXYDIM);
+	//writeImage_ppm(img,MAXXDIM, MAXYDIM);
 	getch_(0);
 }
+
+int winkel(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s,double *winkel, unsigned int bloblabel){
+	if(s.x == 0 || s.y == 0)
+		return -1;
+	unsigned int sy = 0;
+	unsigned int box_height = s.boundary_box.y2 - s.boundary_box.y1;
+
+	// Suche in der Boundary Box nach Berührungspunkten
+	for(int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
+		if(img[s.boundary_box.x1][y] == bloblabel){
+			sy = y;
+			break;
+		}
+	}
+
+}
+
 
 void invert(unsigned char img[MAXXDIM][MAXYDIM]){
 	for(int x = 0 ; x < MAXXDIM; x++)
