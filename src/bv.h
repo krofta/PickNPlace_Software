@@ -66,12 +66,15 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage);
 void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM]);
 void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize);
+void invert(unsigned char img[MAXXDIM][MAXYDIM]);
 //void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold);
 
 // Merkmalsextraktion
-void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel);
-Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel);
-Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Box *boundary_box, unsigned int object_label);
+void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
+Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
+Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label);
+void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
+double rotation(Momente m);
 
 // Anderes
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val);

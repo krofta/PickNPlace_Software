@@ -1164,7 +1164,7 @@ void menu_textur(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM
 
 }
 
-void print_menu_segmentierung(int threshold, int intervall[3], int blob_label, int background)
+void print_menu_segmentierung(int threshold, int intervall[3], int blob_label, int background, int blob_label2)
 {
 	cls();
 	setColor(FOREGROUND_RED);
@@ -1180,7 +1180,9 @@ void print_menu_segmentierung(int threshold, int intervall[3], int blob_label, i
 	printf("  4. Blob-Coloring 2 GW:Image  (Bereich)       :  \n");
 	printf("  5. Blob-Coloring 3 GW:Image  (Bereich)       :  \n");
 	printf("  6. Schwerpunkt                     Blob Label:  \n");
-	printf("  6. Groesster Blob                 Hintergrund:  \n");
+	printf("  7. Groesster Blob                 Hintergrund:  \n");
+	printf("  8. Rotation                        Blob Label:  \n");
+	printf("  8. Invertieren                               [ ]  \n");
 	printf("\n");
 	printline();
 	printf("  Pfeiltaste    w/s       = Auswahl                \n");
@@ -1205,6 +1207,9 @@ void print_menu_segmentierung(int threshold, int intervall[3], int blob_label, i
 	fputs(buf, stdout);
 	setCursor(START_CURSOR_LINE + 6, 49);
 	sprintf(buf,"%i",background);
+	fputs(buf, stdout);
+	setCursor(START_CURSOR_LINE + 7, 49);
+	sprintf(buf,"%i",blob_label2);
 	fputs(buf, stdout);
 }
 void menu_segmentierung_help(int HelpFunc)
@@ -1263,9 +1268,18 @@ void menu_segmentierung_help(int HelpFunc)
 		printf("  Markiert die BoundaryBox des Blobs\n");
 		break;
 	case 6:
-		printf("  6. Groessten Blob suchen  \n");
+		printf("  7. Groessten Blob suchen  \n");
 		printf("  Sucht den groessten Blob unter bruecksichtung\n");
 		printf("  des zu ignorierenden Hintergrunds\n");
+		break;
+	case 7:
+		printf("  7. Rotation  \n");
+		printf("  Errechnet die Ausrichtugn einer Pixelmenge\n");
+		printf("  mit dem gegebenen Grauwert.\n");
+		break;
+	case 8:
+		printf("  8. Invert  \n");
+		printf("  Invertiert jeden Pixel\n");
 		break;
 	default:
 		return;
@@ -1289,9 +1303,10 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 	int threshold = 127;
 	int blob_label = 0;
 	int background = 255;
+	int blob_label2 = 0;
 	int intervall[3] = { 10,10,10 };
 	char buf[20];
-	print_menu_segmentierung(threshold, intervall, blob_label,background);
+	print_menu_segmentierung(threshold, intervall, blob_label,background, blob_label2);
 	while (wahl != KEY_ESC)
 	{
 		setCursor(cursorLine + START_CURSOR_LINE, 49);
@@ -1304,7 +1319,7 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 				break;
 
 			case KEY_ARROW_DOWN:
-				if (cursorLine<6)
+				if (cursorLine<8)
 					cursorLine++;
 				break;
 			case KEY_ARROW_LEFT:
@@ -1344,6 +1359,12 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
+				if (blob_label2 > 0 && cursorLine == 7) {
+					//itoa(--intervall[2], buf, 10);
+					sprintf(buf,"%i",--blob_label2);
+					strcat(buf, "    ");
+					fputs(buf, stdout);
+				}
 				break;
 			case KEY_ARROW_RIGHT:
 				if (threshold < 255 && cursorLine == 0){
@@ -1378,6 +1399,12 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					strcat(buf, "    ");
 					fputs(buf, stdout);
 				}
+				if (blob_label2 < 255 && cursorLine == 7) {
+					//itoa(--intervall[2], buf, 10);
+					sprintf(buf,"%i",++blob_label2);
+					strcat(buf, "    ");
+					fputs(buf, stdout);
+				}
 				break;
 			case KEY_ENTER:
 				fflush(stdin);
@@ -1405,19 +1432,27 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 5:
 					cls();
-					zeige_schwerpunkt(img, blob_label);
+					zeige_schwerpunkt(img, (unsigned int)blob_label);
 					break;
 				case 6:
 					cls();
-					biggestBlob(img,iIMG, background,1000);
+					biggestBlob(img,iIMG, background,500);
+					break;
+				case 7:
+					cls();
+					zeige_rotation(img,(unsigned int) blob_label2);
+					break;
+				case 8:
+					cls();
+					invert(img);
 					break;
 				default:break;
 				}
-				print_menu_segmentierung(threshold, intervall, blob_label, background);
+				print_menu_segmentierung(threshold, intervall, blob_label, background, blob_label2);
 				break;
 			case KEY_F1:
 				menu_segmentierung_help(cursorLine);
-				print_menu_segmentierung(threshold, intervall, blob_label,background);
+				print_menu_segmentierung(threshold, intervall, blob_label,background, blob_label2);
 				break;
 			}
 		}

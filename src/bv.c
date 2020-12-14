@@ -1127,7 +1127,8 @@ void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDI
 	getch();
 }
 
-Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
+Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel){
+	printf("blob label %u\n", bloblabel);
 	Schwerpunkt s;
 	memset(&s,0,sizeof(Schwerpunkt));
 	s.boundary_box.x1 = MAXXDIM;
@@ -1135,7 +1136,7 @@ Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
 	double sx = 0, sy = 0;
 	for (int x = 0; x < MAXXDIM; x++){
 		for (int y = 0; y < MAXYDIM; y++){
-			if(img[x][y] == bloblabel){
+			if((unsigned int)img[x][y] == bloblabel){
 				++s.A;
 				// für boundary box
 				s.boundary_box.x1 = x < s.boundary_box.x1 ? x : s.boundary_box.x1;
@@ -1158,14 +1159,15 @@ Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
 	return s;
 }
 
-void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], int bloblabel){
+void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel){
+	printf("blob label %u\n", bloblabel);
 	Schwerpunkt s = schwerpunkt(img, bloblabel);
 	if(s.A > 0){
 		// Test direkt momente Berechnen
-		Momente m = widerstandsmomente(img, &s.boundary_box, (unsigned int) bloblabel);
-		printf("Ix: %i\n",m.Ix);
-		printf("Iy: %i\n",m.Iy);
-		printf("Ixy: %i\n",m.Ixy);
+		Momente m = widerstandsmomente(img, s, bloblabel);
+		printf("Ix: %ld\n",m.Ix);
+		printf("Iy: %ld\n",m.Iy);
+		printf("Ixy: %ld\n",m.Ixy);
 
 		//Markiere Schwerpunkt im Bild
 		for(int x = 0; x< MAXXDIM; x++)
@@ -1219,6 +1221,7 @@ void bubblesort_blob(Blob *blobs, int length)
 }
 
 void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
+	printf("min blobsize %i\n", min_blobsize);
 	// Marker Matrix mit 0 initialisieren
 	memset(iIMG,0,sizeof(iIMG));
 	// Als erstes Oberhalb des Schwellwertes alle Pixel auf 255 schreiben
@@ -1262,21 +1265,31 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 
 }
 
-Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Box *boundary_box, unsigned int object_label){
+Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label){
 	// Widerstandsmoment I_x: Summe(x^2*dA)
 	Momente m;
-	memset(&m,0,sizeof(Momente));
+	//memset(&m,0,sizeof(Momente));
+	m.Ix = m.Iy = m.Ixy = 0;
 	//double Ix = 0, Iy = 0, Ixy = 0;
 	long int tmp = 0;
-	for(int x = boundary_box->x1; x <= boundary_box->x2; x++){
-		for(int y = boundary_box->y1; y <= boundary_box->y2; y++){
+	for(int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
+		for(int y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
 			// dA ist immer 1, da ein Pixel ein dA darstellt
-			if(img[x][y] == object_label){
-				tmp = ((x*10 + 5) -  (boundary_box->x1*10));
-				m.Ix += tmp * tmp;
-				tmp = ((y*10 + 5) -  (boundary_box->y1*10));
-				m.Iy += tmp * tmp;
-				m.Ixy += (((x*10) + 5) -  (boundary_box->x1*10)) * (((y*10) + 0.5) -  (boundary_box->y1*10));
+			if((unsigned int)img[x][y] == object_label){
+				// Schwerpunkt ist der Bezugspunkt
+				// Abstand zum schwerpunkt y
+
+				//tmp = ((x*10 + 5) -  (s->boundary_box->x1*10));
+				tmp = ((int)s.x - x);
+				tmp *= tmp;
+				//printf("tmp %ld\n", tmp);
+				m.Ix += tmp;
+				//tmp = ((y*10 + 5) -  (s->boundary_box->y1*10));
+				tmp = ((int)s.y - y);
+				m.Iy += (tmp * tmp);
+				//m.Ixy += (((x*10) + 5) -  (s->boundary_box->x1*10)) * (((y*10) + 0.5) -  (s->boundary_box->y1*10));
+				m.Ixy += ((int)s.x - x) * ((int)s.y - y);
+				img[x][y] = 127;
 				/*
 				Ix += pow((((double)x + 0.5) -  (double)boundary_box->x1),2);
 				Iy += pow((((double)y + 0.5) -  (double)boundary_box->y1),2);
@@ -1286,10 +1299,43 @@ Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Box *boundary_box
 		}
 	}
 	m.Ixy *= -1;
+	/*
 	m.Ix /= 10;
 	m.Iy /= 10;
 	m.Ixy /= 10;
+	*/
 	return m;
+}
+
+double rotation(Momente m){
+	// Drehung der Hauptachsen tan(2a)=(2*Ixy)/(Iy-Ix)
+	double x = ((double)m.Ixy*2)/(((double)m.Iy) - ((double)m.Ix));
+	double erg = atan(x)/2.0;
+	erg *= 180 / M_PI;
+	return erg;
+}
+
+void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label){
+	Schwerpunkt s = schwerpunkt(img, object_label);
+	printf("Schwerpunkt x/y: %u %u \n", s.x, s.y);
+	Momente m = widerstandsmomente(img, s, object_label);
+	double r = rotation(m);
+	printf("Ix %li\n",m.Ix);
+	printf("Iy %li\n",m.Iy);
+	printf("Ixy %li°\n",m.Ixy);
+	printf("Rotation des Körpers %2.3lf°\n",r);
+	printf("Press key...\n");
+	writeImage_ppm(img,MAXXDIM, MAXYDIM);
+	getch_(0);
+}
+
+void invert(unsigned char img[MAXXDIM][MAXYDIM]){
+	for(int x = 0 ; x < MAXXDIM; x++)
+		for(int y = 0; y < MAXYDIM; y++){
+
+			img[x][y] = (255) - img[x][y];
+		}
+	writeImage_ppm(img,MAXXDIM, MAXYDIM);
 }
 
 

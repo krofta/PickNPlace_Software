@@ -120,17 +120,20 @@ int readImage_ppm(unsigned char imgage[MAXXDIM][MAXYDIM])
 			printf("Error loading image \n");
 			goto error3;
 		}
-		fclose(fp);
+		//fclose(fp);
 		unsigned int i = 0;
 		printf("calculate grey scale\n");
         for(int x = 0; x < MAXXDIM; x++){
         	for(int y = 0; y < MAXYDIM; y++){
-        		imgage[x][y] = (char)
+        		imgage[x][y] = (img->data[i].red + img->data[i].green + img->data[i].blue)/3;
+        				/*
+        				(char)
         				(
         				((double)img->data[i].red * 0.2126) +
         				((double)img->data[i].green * 0.7152) +
 						((double)img->data[i].blue * 0.0722)
 						);
+						*/
         		++i;
         	}
         }
@@ -146,9 +149,12 @@ int readImage_ppm(unsigned char imgage[MAXXDIM][MAXYDIM])
 				fscanf(fp, "%d", &r);
 				fscanf(fp, "%d", &g);
 				fscanf(fp, "%d", &b);
+				imgage[i][j] = (r + g + b)/3;
+				/*
         		imgage[i][j] = (char)(((double)r * 0.2126) +
         				((double)g * 0.7152) +
 						((double)b * 0.0722));
+				*/
 			}
 		}
     	goto success;
@@ -165,10 +171,14 @@ error:
 	return -1;
 
 success_binary:
+	//printf("...1\n");
 	free(img->data);
-	free(img);
 success:
+	//printf("...2\n");
+	free(img);
+	//printf("...3\n");
 	free(filename);
+	//printf("...4\n");
 	fclose(fp);
 	printf("Bild wurde eingelesen ...\nPress Key\n");
 	getch_(0);
