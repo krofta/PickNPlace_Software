@@ -1293,7 +1293,7 @@ Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, un
 				m.Iy += (tmp * tmp);
 				//m.Ixy += (((x*10) + 5) -  (s->boundary_box->x1*10)) * (((y*10) + 0.5) -  (s->boundary_box->y1*10));
 				m.Ixy += ((int)s.x - x) * ((int)s.y - y);
-				img[x][y] = 127;
+				//img[x][y] = 127;
 				/*
 				Ix += pow((((double)x + 0.5) -  (double)boundary_box->x1),2);
 				Iy += pow((((double)y + 0.5) -  (double)boundary_box->y1),2);
@@ -1324,29 +1324,100 @@ void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_lab
 	printf("Schwerpunkt x/y: %u %u \n", s.x, s.y);
 	Momente m = widerstandsmomente(img, s, object_label);
 	double r = orientierung(m);
+	printf("Orientierung: ----------------\n");
 	printf("Ix %li\n",m.Ix);
 	printf("Iy %li\n",m.Iy);
 	printf("Ixy %li°\n",m.Ixy);
-	printf("Rotation des Körpers %2.3lf°\n",r);
+	printf("Orientierung des Körpers %2.3lf°\n",r);
+
+	double w = winkel(img, s, object_label);
+	printf("Winkel: ----------------------\n");
+	printf("Winkel des Körpers %2.3lf°\n",w);
 	printf("Press key...\n");
 	//writeImage_ppm(img,MAXXDIM, MAXYDIM);
 	getch_(0);
 }
 
-int winkel(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s,double *winkel, unsigned int bloblabel){
+double winkel(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel){
 	if(s.x == 0 || s.y == 0)
-		return -1;
-	unsigned int sy = 0;
+		return -100;
+	unsigned int sy = 0, sx = 0;
 	unsigned int box_height = s.boundary_box.y2 - s.boundary_box.y1;
-
-	// Suche in der Boundary Box nach Berührungspunkten
+	printf("winkel bloblabel %u\n", bloblabel);
+	// Suche in der Boundary Box in y-Richtung nach Schnittpunkt
 	for(int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
 		if(img[s.boundary_box.x1][y] == bloblabel){
 			sy = y;
 			break;
 		}
 	}
-
+	// Suche in der Boundary Box in x-Richtung nach Schnittpunkten
+	for(int x = s.boundary_box.x1; x < s.boundary_box.x2; x++){
+		if(img[x][s.boundary_box.y1] == bloblabel){
+			sx = x;
+			break;
+		}
+	}
+	if( sy == 0 || sx == 0)
+		return -200;
+/*y1   B
+ * 	|''''/
+ * 	|   /
+ * A|  /  C
+ * 	| /
+ * 	|/
+ *sy
+ * 	alpha= arctan(B/A)
+ */
+	// A > B : Von oben nach unten iterieren
+	unsigned int a = 0, b = 0, count = 0;
+	double alpha = 0, beta = 0, tmp = 0;
+	unsigned  int dy = (sy - s.boundary_box.y1) ;
+	unsigned  int dx = (sx - s.boundary_box.x1) ;
+	printf("x1 %u y1 %u\n", s.boundary_box.x1,s.boundary_box.y1);
+	printf("sx %u sy %u\n", sx, sy);
+	printf("dx %u dy %u\n", dx, dy);
+	if(dy > dx){
+		for(unsigned int y = s.boundary_box.y1; y < sy; y++){
+			for(unsigned int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
+				if(img[x][y] == bloblabel){
+					a = sy - y;
+					b = x - s.boundary_box.x1;
+					if(a == 0)
+						break;
+					tmp = atan(((double)a/(double)b));
+					printf("a=%3u b=%3u w=%lf\n",a, b, 90.0 - (tmp* 180 / M_PI));
+					alpha += tmp;
+					count++;
+					break;
+				}
+			}
+			//printf("y++ %u\n",y);
+		}
+		alpha /= (double)count; // IC nach links drehen
+		alpha *= 180 / M_PI;
+		return alpha;
+	}
+	// B > A : von links nach rechts iterieren
+	else{
+		for(unsigned int x = s.boundary_box.x1; x < s.boundary_box.x2; x++){
+			for(unsigned int y = s.boundary_box.y1; x < s.boundary_box.y2; y++){
+				if(img[x][y] == bloblabel){
+					a = (y + 1) - s.boundary_box.y1;
+					b = (x + 1) - s.boundary_box.x1;
+					tmp = atan(((double)a/(double)b));
+					printf("a=%lf\n",tmp);
+					beta += tmp;
+					count++;
+					break;
+				}
+			}
+		}
+		beta /= (double)count;
+		beta *= 180 / M_PI;
+		beta *= -1;	// IC nach rechts drehen
+		return beta;
+	}
 }
 
 
