@@ -947,6 +947,10 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 	int bereich = 5, max = 0, null_labels = 0;
 	init_cMatrix(img2, 0);
 	init_iMatrix(iIMG);
+
+	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
+	int l_extend = 0;
+
 	float ink_bereich = (float)intervall / (float)iterationen;
 	for (int iter = 0; iter < iterationen; iter++){
 		cls();
@@ -956,28 +960,41 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 		for (int x = 1; x < MAXXDIM; x++){
 			for (int y = 1; y < MAXYDIM; y++) {
 				//<----- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) > bereich    -> x_c = neues Label
-				if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) > bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) > bereich && iter == 0)
+				dy = img[x][y]-img[x][y-1];
+				dy = dy < 0 ? dy * -1 : dy;
+				dx = img[x][y]-img[x-1][y];
+				dx = dx < 0 ? dx * -1 : dx;
+
+				if ((dy > bereich) && (dx > bereich) && (iter == 0))
 					iIMG[x][y] = ++blob;
-				else if ((int)sqrt(pow(img2[x][y] - img2[x][y - 1], 2)) > bereich && (int)sqrt(pow(img2[x][y] - img2[x - 1][y], 2)) > bereich && iter != 0)
+				else if ((dy > bereich) && (dx > bereich) && (iter != 0))
 					iIMG[x][y] = ++blob;
-				//<---- Diff( x_c, x_l) <= bereich------------------------------- && Diff( x_c, x_u) <= bereich   -> x_c = x_u
-				else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) <= bereich && iter == 0) {
-					int l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+				//<---- Diff( center, links) <= bereich------------------------------- && Diff( center, unten) <= bereich   -> x_c = x_u
+				else if ((dy <= bereich) && (dx <= bereich) && (iter == 0)) {
+					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+					dy2 = img[x][y] - img[x][y - l_extend];
+					dy2 = dy < 0 ? dy * -1 : dy;
+					dx2 = img[x][y] - img[x - l_extend][y];
+					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
 					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
-						(int)sqrt(pow(img[x][y] - img[x][y - l_extend], 2)) <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
-						(int)sqrt(pow(img[x][y] - img[x - l_extend][y], 2)) <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
-						x > l_extend && y > l_extend && keine_fransen == 1) {
+						dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
+						dx2 <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
+						x > l_extend && y > l_extend) {
 						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
 						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
 						reset_blob_label(iIMG, old_label, new_label);
 					}
 					iIMG[x][y] = iIMG[x - 1][y];
 				}
-				else if ((int)sqrt(pow(img2[x][y] - img2[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img2[x][y] - img2[x - 1][y], 2)) <= bereich && iter != 0) {
-					int l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+				else if (dy <= bereich && dx <= bereich && iter != 0) {
+					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+					dy2 = img[x][y] - img[x][y - l_extend];
+					dy2 = dy < 0 ? dy * -1 : dy;
+					dx2 = img[x][y] - img[x - l_extend][y];
+					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
 					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
-						(int)sqrt(pow(img2[x][y] - img2[x][y - l_extend], 2)) <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
-						(int)sqrt(pow(img2[x][y] - img2[x - l_extend][y], 2)) <= bereich && // L-Maske verlängern -> immernoch im Bereich?
+						dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
+						dx2 <= bereich && // L-Maske verlängern -> immernoch im Bereich?
 						x > l_extend && y > l_extend && keine_fransen == 1) {
 						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
 						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
@@ -986,23 +1003,23 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 					iIMG[x][y] = iIMG[x - 1][y];
 				}
 				//<---- Diff( x_c, x_l) <= bereich------------------------------- && Diff( x_c, x_u) > bereich
-				else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) > bereich && iter == 0) {
+				else if (dy <= bereich && dx > bereich && iter == 0) {
 					if (y == 1)
 						iIMG[x][y] = ++blob;
 					else
 						iIMG[x][y] = iIMG[x][y - 1];
 				}
-				else if ((int)sqrt(pow(img2[x][y] - img2[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img2[x][y] - img2[x - 1][y], 2)) > bereich && iter != 0) {
+				else if (dy <= bereich && dx > bereich && iter != 0) {
 					if (y == 1)
 						iIMG[x][y] = ++blob;
 					else
 						iIMG[x][y] = iIMG[x][y - 1];
 				}
 				//<---- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) <= bereich
-				else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) > bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) <= bereich && iter == 0) {
+				else if (dy > bereich && dx <= bereich && iter == 0) {
 					iIMG[x][y] = iIMG[x - 1][y];
 				}
-				else if ((int)sqrt(pow(img2[x][y] - img2[x][y - 1], 2)) > bereich && (int)sqrt(pow(img2[x][y] - img2[x - 1][y], 2)) <= bereich && iter != 0) {
+				else if (dy > bereich && dx <= bereich && iter != 0) {
 					iIMG[x][y] = iIMG[x - 1][y];
 				}
 			}
@@ -1054,30 +1071,36 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 unsigned int find_blobs(unsigned char img[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich){
 	init_iMatrix(iIMG);
 	unsigned int blob = 0;
+	int dy = 0, dx = 0;
+
 	for (int x = 1; x < MAXXDIM; x++){
 		for (int y = 1; y < MAXYDIM; y++)
 		{
+			dy = img[x][y]-img[x][y-1];
+			dy = dy < 0 ? dy * -1 : dy;
+			dx = img[x][y]-img[x-1][y];
+			dx = dx < 0 ? dx * -1 : dx;
 			//       Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) > bereich    -> x_c = neues Label
-			if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) > bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) > bereich)
+			if (dy > bereich && dx > bereich)
 				iIMG[x][y] = ++blob;
 			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) <= bereich   -> x_c = x_u
-			else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) <= bereich) {
+			else if (dy <= bereich && dx <= bereich) {
 				//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
 				if (iIMG[x - 1][y] != iIMG[x][y - 1]){
 					// Label überscheiben! Höherwertiges Label wird überschrieben, da dies falsch inkrementiert wurde
-					--blob;
 					int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
 					int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
+					--blob;
 					reset_blob_label(iIMG, old_label, new_label);
 				}
 				// nun gewönlich x_u, x_c zuweisen
 				iIMG[x][y] = iIMG[x - 1][y];
 			}
 			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) > bereich
-			else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) <= bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) > bereich) 
+			else if (dy <= bereich && dx > bereich)
 					iIMG[x][y] = iIMG[x][y - 1];
 			//      Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) <= bereich
-			else if ((int)sqrt(pow(img[x][y] - img[x][y - 1], 2)) > bereich && (int)sqrt(pow(img[x][y] - img[x - 1][y], 2)) <= bereich) 
+			else if (dy > bereich && dx <= bereich)
 				iIMG[x][y] = iIMG[x - 1][y];
 		}
 	}
