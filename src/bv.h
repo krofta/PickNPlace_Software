@@ -75,14 +75,14 @@ Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblab
 Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label);
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
 double orientierung(Momente m);
-double winkel(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel);
+double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel);
 
 // Anderes
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val);
 void init_iMatrix(int iMatrix[MAXXDIM][MAXYDIM]);
 void init_fMatrix(float fMatrix[MAXXDIM][MAXYDIM]);
 int  find_abs_extremum_iMatrix(int min_max, int iMatrix[MAXXDIM][MAXYDIM]);
-float  find_abs_extremum_fMatrix(int min_max, float iMatrix[MAXXDIM][MAXYDIM]);
+float  find_abs_extremum_fMatrix(int min_max, float fMatrix[MAXXDIM][MAXYDIM]);
 void get_bin_koeff(float bin_ver[50], int n, float normierung);
 double fakultaet(int n);
 void bubblesort(int *array, int length);

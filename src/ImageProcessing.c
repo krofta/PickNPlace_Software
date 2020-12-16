@@ -1552,6 +1552,11 @@ void menu()
 	int cursorLine = 0;
 	unsigned char image[MAXXDIM][MAXYDIM];
 	unsigned char image2[MAXXDIM][MAXYDIM];
+	memset(&image, 0, sizeof(image));
+	/*
+	image[10][100] = 255;
+	writeImage_ppm(image,MAXXDIM, MAXYDIM);
+	*/
 	cursorSize(100);
 	print_menu();
 	int beenden = 0;

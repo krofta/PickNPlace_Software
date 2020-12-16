@@ -14,52 +14,86 @@
 /***********************************************************************************************************/
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val)
 {
+	memset(cMatrix, val, MAXXDIM*MAXYDIM * sizeof(unsigned char));
+	return;
+	/*
 	unsigned char init = val > PIXEL_DEPTH - 1 ? 255 : val < 0 ? 0 : val;
 	for (int i = 0; i < MAXXDIM; i++)
 		for (int j = 0; j < MAXYDIM; j++)
 			cMatrix[i][j] = init;
+	*/
+
 }
 void init_iMatrix(int iMatrix[MAXXDIM][MAXYDIM])
 {
+	memset(iMatrix, 0, MAXXDIM*MAXYDIM*sizeof(int));
+	return;
+	/*
 	for (int i = 0; i < MAXXDIM; i++)
 		for (int j = 0; j < MAXYDIM; j++)
 			iMatrix[i][j] = 0;
+	*/
+
 }
 void init_fMatrix(float fMatrix[MAXXDIM][MAXYDIM])
 {
+	memset(fMatrix, 0, MAXXDIM*MAXYDIM*sizeof(float));
+	return;
+	/*
 	for (int i = 0; i < MAXXDIM; i++)
 		for (int j = 0; j < MAXYDIM; j++)
 			fMatrix[i][j] = 0.0;
+	*/
+
 }
 //findet den vom Betrag gr��ten/kleinsten Wert der Matrix
 int  find_abs_extremum_iMatrix(int min_max, int iMatrix[MAXXDIM][MAXYDIM])
 {
 	int extremum = min_max == MAX ? 0 : 0xFFFF;
-	for (int i = 0; i < MAXXDIM; i++)
-		for (int j = 0; j < MAXYDIM; j++)
-		{
-			int abs = sqrt(pow(iMatrix[i][j], 2));
-			if (min_max == MAX && abs > extremum)
-				extremum = abs;
-			else if (min_max == MIN && abs < extremum)
-				extremum = abs;
+	int abs = 0;
+	if (min_max == MAX){
+		for (int i = 0; i < MAXXDIM; i++){
+			for (int j = 0; j < MAXYDIM; j++){
+				abs = iMatrix[i][j] < 0 ? iMatrix[i][j] * -1 : iMatrix[i][j]; //sqrt(pow(iMatrix[i][j], 2));
+				if (abs > extremum)
+					extremum = abs;
+			}
 		}
+	}else{
+		for (int i = 0; i < MAXXDIM; i++){
+			for (int j = 0; j < MAXYDIM; j++){
+				abs = iMatrix[i][j] < 0 ? iMatrix[i][j] * -1 : iMatrix[i][j]; //sqrt(pow(iMatrix[i][j], 2));
+				if (abs < extremum)
+					extremum = abs;
+			}
+		}
+	}
+
 	return extremum;
 }
 
 //findet den vom Betrag gr��ten/kleinsten Wert der Matrix
-float  find_abs_extremum_fMatrix(int min_max, float iMatrix[MAXXDIM][MAXYDIM])
+float  find_abs_extremum_fMatrix(int min_max, float fMatrix[MAXXDIM][MAXYDIM])
 {
 	float extremum = min_max == MAX ? 0.0 : 0xFFFF;
-	for (int i = 0; i < MAXXDIM; i++)
-		for (int j = 0; j < MAXYDIM; j++)
-		{
-			float abs = sqrt(pow(iMatrix[i][j], 2));
-			if (min_max == MAX && abs > extremum)
-				extremum = abs;
-			else if (min_max == MIN && abs < extremum)
-				extremum = abs;
+	float abs = 0;
+	if (min_max == MAX ){
+		for (int i = 0; i < MAXXDIM; i++){
+			for (int j = 0; j < MAXYDIM; j++){
+				abs = fMatrix[i][j] < 0 ? fMatrix[i][j] * -1 : fMatrix[i][j]; // sqrt(pow(iMatrix[i][j], 2));
+				if(abs > extremum)
+					extremum = abs;
+			}
 		}
+	} else {
+		for (int i = 0; i < MAXXDIM; i++){
+			for (int j = 0; j < MAXYDIM; j++){
+				abs = fMatrix[i][j] < 0 ? fMatrix[i][j] * -1 : fMatrix[i][j]; // sqrt(pow(iMatrix[i][j], 2));
+				if ( abs < extremum)
+					extremum = abs;
+			}
+		}
+	}
 	return extremum;
 }
 
@@ -190,7 +224,7 @@ void funk_close(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM]
 
 // Z�hlen von Objekten in einem Bild
 void grassfire(unsigned char img[MAXXDIM][MAXYDIM]) {
-	char burn[256][256];
+	char burn[MAXYDIM][MAXXDIM];
 	//Initialisierung des hilfsarrays
 	for (int i = 0; i < MAXXDIM; i++)
 		for (int j = 0; j < MAXXDIM; j++)
@@ -495,9 +529,12 @@ void gauss_filter(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDI
 		free(gauss_filter[i]);
 	free(gauss_filter);
 	//init_cMatrix(img2, 0);
+	memcpy(&img2, &img, sizeof(img));
+	/*
 	for (int x = 0; x < MAXXDIM; x++)
 		for (int y = 0; y < MAXYDIM; y++)
 			img2[x][y] = img[x][y];
+	*/
 	for (int x = (scale / 2); x < MAXXDIM - (scale / 2); x++)
 		for (int y = (scale / 2); y < MAXYDIM - (scale / 2); y++)
 			img2[x][y] = (unsigned char)(iIMG[x][y] > 255 ? 255 : iIMG[x][y] < 0 ? 0 : iIMG[x][y]);
@@ -729,7 +766,7 @@ void laws_textur(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM
 						zw[mask] += ((float)masken[mask][mask_val] * (float)img[i][j]);
 			for (int zw_mask = 0; zw_mask < 8; zw_mask++)		// zw_mask = zwischenwert der Maske
 				fArray[x][y] += zw[zw_mask]* zw[zw_mask];		// Alle quadratisch addieren
-			fArray[x][y] = (float)sqrt((double)fArray[x][y]);	// Qurzel ziehen //Pytagoras
+			fArray[x][y] = sqrt(fArray[x][y]);	// Qurzel ziehen //Pytagoras
 		}
 	}
 	float max = find_abs_extremum_fMatrix(MAX, fArray);			// vom Betrag her das Max finden
@@ -1136,7 +1173,7 @@ Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int blobla
 	double sx = 0, sy = 0;
 	for (int x = 0; x < MAXXDIM; x++){
 		for (int y = 0; y < MAXYDIM; y++){
-			if((unsigned int)img[x][y] == bloblabel){
+			if((unsigned int)img[y][x] == bloblabel){
 				++s.A;
 				// für boundary box
 				s.boundary_box.x1 = x < s.boundary_box.x1 ? x : s.boundary_box.x1;
@@ -1171,22 +1208,22 @@ void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabe
 
 		//Markiere Schwerpunkt im Bild
 		for(int x = 0; x< MAXXDIM; x++)
-			img[x][s.y] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[s.y][x] = (char)bloblabel - (PIXEL_DEPTH/2);
 		for(int y = 0; y< MAXXDIM; y++)
-			img[s.x][y] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[y][s.x] = (char)bloblabel - (PIXEL_DEPTH/2);
 
 		// Boundary Box im Bild Markieren
 		for(int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-			img[x][s.boundary_box.y1] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[x][s.boundary_box.y2] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[s.boundary_box.y1][x] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[s.boundary_box.y2][x] = (char)bloblabel - (PIXEL_DEPTH/2);
 		}
 		for(int y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
-			img[s.boundary_box.x1][y] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[s.boundary_box.x2][y] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[y][s.boundary_box.x1] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[y][s.boundary_box.x2] = (char)bloblabel - (PIXEL_DEPTH/2);
 		}
 		printf("Schwerpunkt x: %i\n", s.x);
 		printf("Schwerpunkt y: %i\n", s.y);
-		printf("P1(%i,%i)P2(%i,%i)P3(%i,%i)P4(%i,%i)\n", s.boundary_box.x1, s.boundary_box.y1, s.boundary_box.x2, s.boundary_box.y1, s.boundary_box.y2, s.boundary_box.x1, s.boundary_box.x2, s.boundary_box.y2);
+		printf("P1xy(%i,%i)P2xy(%i,%i)P3xy(%i,%i)P4xy(%i,%i)\n", s.boundary_box.x1, s.boundary_box.y1, s.boundary_box.x2, s.boundary_box.y1, s.boundary_box.y2, s.boundary_box.x1, s.boundary_box.x2, s.boundary_box.y2);
 		printf("Fläche       : %i\n", s.A);
 		printf("Press key to save result\n");
 		writeImage_ppm(img, MAXXDIM, MAXYDIM);
@@ -1236,9 +1273,8 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
 	//Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
 	Blob *blobs = (Blob*)malloc((max_blob*  sizeof(Blob)) +1);
-	printf("holla");
 	memset(blobs, 0, max_blob);
-	// Blosgroessen und das entsprechende Label ermitteln
+	// Blobgroessen und das entsprechende Label ermitteln
 	for (int x = 0; x < MAXXDIM; x++){
 		for (int y = 0; y < MAXYDIM; y++){
 			blobs[iIMG[x][y]].blob_size++;
@@ -1263,7 +1299,6 @@ void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][
 				img[x][y] = 0;
 			else
 				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
-	printf("holla");
 	free(blobs);
 	writeImage_ppm(img, MAXXDIM, MAXYDIM);
 
@@ -1279,7 +1314,7 @@ Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, un
 	for(int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
 		for(int y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
 			// dA ist immer 1, da ein Pixel ein dA darstellt
-			if((unsigned int)img[x][y] == object_label){
+			if((unsigned int)img[y][x] == object_label){
 				// Schwerpunkt ist der Bezugspunkt
 				// Abstand zum schwerpunkt y
 
@@ -1330,36 +1365,41 @@ void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_lab
 	printf("Ixy %li°\n",m.Ixy);
 	printf("Orientierung des Körpers %2.3lf°\n",r);
 
-	double w = winkel(img, s, object_label);
+	double w = winkel_rechteck(img, s, object_label);
 	printf("Winkel: ----------------------\n");
 	printf("Winkel des Körpers %2.3lf°\n",w);
 	printf("Press key...\n");
-	//writeImage_ppm(img,MAXXDIM, MAXYDIM);
-	getch_(0);
+	writeImage_ppm(img,MAXXDIM, MAXYDIM);
+	//getch_(0);
 }
 
-double winkel(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel){
+double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel){
 	if(s.x == 0 || s.y == 0)
 		return -100;
 	unsigned int sy = 0, sx = 0;
-	unsigned int box_height = s.boundary_box.y2 - s.boundary_box.y1;
+	// Schauen o
+	if((s.boundary_box.y2 - s.boundary_box.y1) < 25 )
+		return -101;
+	if((s.boundary_box.x2 - s.boundary_box.x1) < 25 )
+		return -102;
+
 	printf("winkel bloblabel %u\n", bloblabel);
 	// Suche in der Boundary Box in y-Richtung nach Schnittpunkt
 	for(int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
-		if(img[s.boundary_box.x1][y] == bloblabel){
+		if(img[y][s.boundary_box.x1] == bloblabel){
 			sy = y;
 			break;
 		}
 	}
 	// Suche in der Boundary Box in x-Richtung nach Schnittpunkten
 	for(int x = s.boundary_box.x1; x < s.boundary_box.x2; x++){
-		if(img[x][s.boundary_box.y1] == bloblabel){
+		if(img[s.boundary_box.y1][x] == bloblabel){
 			sx = x;
 			break;
 		}
 	}
 	if( sy == 0 || sx == 0)
-		return -200;
+		return -101;
 /*y1   B
  * 	|''''/
  * 	|   /
@@ -1375,48 +1415,58 @@ double winkel(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bl
 	unsigned  int dy = (sy - s.boundary_box.y1) ;
 	unsigned  int dx = (sx - s.boundary_box.x1) ;
 	printf("x1 %u y1 %u\n", s.boundary_box.x1,s.boundary_box.y1);
+	printf("x2 %u y2 %u\n", s.boundary_box.x2,s.boundary_box.y2);
 	printf("sx %u sy %u\n", sx, sy);
 	printf("dx %u dy %u\n", dx, dy);
 	if(dy > dx){
-		for(unsigned int y = s.boundary_box.y1; y < sy; y++){
+		unsigned int y_end = sy - ((sy - s.boundary_box.y1) / 2);
+		for(unsigned int y = s.boundary_box.y1; y < y_end; y++){
 			for(unsigned int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-				if(img[x][y] == bloblabel){
+				if(img[y][x] == bloblabel){
 					a = sy - y;
 					b = x - s.boundary_box.x1;
 					if(a == 0)
 						break;
-					tmp = atan(((double)a/(double)b));
-					printf("a=%3u b=%3u w=%lf\n",a, b, 90.0 - (tmp* 180 / M_PI));
+					tmp = atan(((double)b/(double)a));
+					printf("a=%3u b=%3u w=%lf\n",a, b,(tmp* 180 / M_PI));
 					alpha += tmp;
 					count++;
 					break;
 				}
+				img[y][x] = 127;
 			}
 			//printf("y++ %u\n",y);
 		}
 		alpha /= (double)count; // IC nach links drehen
 		alpha *= 180 / M_PI;
 		return alpha;
+
 	}
 	// B > A : von links nach rechts iterieren
 	else{
-		for(unsigned int x = s.boundary_box.x1; x < s.boundary_box.x2; x++){
-			for(unsigned int y = s.boundary_box.y1; x < s.boundary_box.y2; y++){
-				if(img[x][y] == bloblabel){
-					a = (y + 1) - s.boundary_box.y1;
-					b = (x + 1) - s.boundary_box.x1;
-					tmp = atan(((double)a/(double)b));
-					printf("a=%lf\n",tmp);
-					beta += tmp;
+		unsigned int x_end = sx - ((sx - s.boundary_box.x1) / 2);
+		printf("x_end %u\n", x_end);
+		for(unsigned int x = s.boundary_box.x1; x < x_end; x++){
+			for(unsigned int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
+				//printf("x%u y%u\n", x,y);
+				if(img[y][x] == bloblabel){
+					b = sx - x;
+					a = y - s.boundary_box.y1;
+					if(a == 0)
+						break;
+					tmp = atan(((double)b/(double)a));
+					printf("a=%3u b=%3u w=%lf\n",a, b,90.0 - (tmp* 180 / M_PI));
+					alpha += tmp;
 					count++;
 					break;
 				}
+				img[y][x] = 127;
 			}
 		}
-		beta /= (double)count;
-		beta *= 180 / M_PI;
-		beta *= -1;	// IC nach rechts drehen
-		return beta;
+		alpha /= (double)count; // IC nach links drehen
+		alpha *= 180 / M_PI;
+		alpha -= 90.0;
+		return alpha;
 	}
 }
 
