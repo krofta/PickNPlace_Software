@@ -973,7 +973,7 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 				else if ((dy <= bereich) && (dx <= bereich) && (iter == 0)) {
 					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
 					dy2 = img[x][y] - img[x][y - l_extend];
-					dy2 = dy < 0 ? dy * -1 : dy;
+					dy2 = dy2 < 0 ? dy2 * -1 : dy2;
 					dx2 = img[x][y] - img[x - l_extend][y];
 					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
 					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
@@ -989,7 +989,7 @@ void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned c
 				else if (dy <= bereich && dx <= bereich && iter != 0) {
 					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
 					dy2 = img[x][y] - img[x][y - l_extend];
-					dy2 = dy < 0 ? dy * -1 : dy;
+					dy2 = dy2 < 0 ? dy2 * -1 : dy2;
 					dx2 = img[x][y] - img[x - l_extend][y];
 					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
 					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
@@ -1107,6 +1107,319 @@ unsigned int find_blobs(unsigned char img[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][M
 	return blob;
 }
 
+unsigned short ** allocateTwoDimenArray(unsigned short row, unsigned short col){
+    unsigned short ** ptr = (unsigned short **) malloc(sizeof(unsigned short *)*row);
+    for(int i = 0; i < row; i++)
+        ptr[i] = (unsigned short *) malloc(sizeof(unsigned short)*col);
+    return ptr;
+}
+
+void destroyTwoDimenArray(unsigned short ** ptr, unsigned short row,unsigned short col){
+    for(int i = 0; i < row; i++)
+        free(ptr[i]);
+    free(ptr);
+}
+
+
+
+#define L_EXTEND 0
+#if 0
+unsigned int fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich){
+    //unsigned short ** iIMG = allocateTwoDimenArray(MAXYDIM, MAXXDIM);
+	printf("sizeof unsigned short %i\n", sizeof(unsigned short));
+    unsigned short iIMG[MAXYDIM][MAXXDIM];
+    // start code for stm32
+    unsigned short blob_alias[10000];
+    //for(int i = 0; i<10000;){
+    //	blob_alias[i]=i++;
+    //}
+    unsigned short max_blob = 10000;
+    for(int i = 0; i< 10000; i++){
+    	blob_alias[i] = i;
+    }
+	for (int x = 0; x < MAXXDIM; x++){
+		for (int y = 0; y < MAXYDIM; y++){
+			iIMG[y][x] = 0;
+		}
+	}
+	unsigned short blob = 0;
+	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
+	int l_extend = 0;
+	printf("arrays initialized\n");
+	for (int y = 1; y < MAXYDIM; y++){
+		for (int x = 1; x < MAXXDIM; x++){
+			dx = img[y][x]-img[y][x-1];
+			dx = dx < 0 ? dx * -1 : dx;
+			dy = img[y][x]-img[y-1][x];
+			dy = dy < 0 ? dy * -1 : dy;
+			//       Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) > bereich    -> x_c = neues Label
+			if (dy > bereich && dx > bereich){
+				if(blob == (max_blob-1)){
+					goto func_error;
+				}
+				iIMG[y][x] = (unsigned short)++blob;
+				blob_alias[blob] = (unsigned short)blob;
+			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) <= bereich   -> x_c = x_u
+			}else if (dy <= bereich && dx <= bereich) {
+				iIMG[y][x] = iIMG[y][x - 1];
+				continue;
+#if L_EXTEND == 1
+				l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+				dx2 = img[y][x] - img[y][x - l_extend];
+				dx2 = dx2 < 0 ? dx2 * -1 : dx2;
+				dy2 = img[y][x] - img[y - l_extend][x];
+				dy2 = dy2 < 0 ? dy2 * -1 : dy2;
+				if ((iIMG[y - 1][x] != iIMG[y][x - 1]) &&	// Label stimmen nicht �berein -> Selbe Region?
+					(dy2 <= bereich) && // L-Maske verbreitern -> immernoch im Bereich?
+					(dx2 <= bereich) && // L-Maske verlängern -> immernoch im Bereich?
+					(x > l_extend) && (y > l_extend)) {
+
+					//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
+					unsigned short higher_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y-1][x] : iIMG[y][x-1];
+					unsigned short lower_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y][x-1] : iIMG[y-1][x];
+
+					printf("blob collision\n");
+					// Blob alias liste verwalten
+					// TODO: write function to create alias table
+					// check ob höheres label ein alias von dem kleineren ist
+					for (int x = 0; x < MAXXDIM; x++)
+						for (int y = 0; y < MAXYDIM; y++)
+							if (iIMG[y][x] == higher_label)
+								iIMG[x][y] = lower_label;
+					/*
+					if(blob_alias[higher_label] != blob_alias[lower_label]){
+						solve_alias(blob_alias, lower_label, higher_label);
+					}
+					*/
+					iIMG[y][x] = lower_label;
+					continue;
+				}
+				iIMG[y][x] = iIMG[y][x- 1];
+#elif L_EXTEND == 0
+				//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
+				unsigned short higher_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y-1][x] : iIMG[y][x-1];
+				unsigned short lower_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y][x-1] : iIMG[y-1][x];
+				if (iIMG[y - 1][x] != iIMG[y][x - 1]){
+					//printf("blob collision\n");
+					// Blob alias liste verwalten
+					// TODO: write function to create alias table
+					// check ob höheres label ein alias von dem kleineren ist
+					if(blob_alias[higher_label] != blob_alias[lower_label]){
+						solve_alias(blob_alias, higher_label ,lower_label);
+					}
+				}
+				// das kleinere Label vergeben, da dieser blob als erstes erkannt wurde
+				iIMG[y][x] = lower_label;
+#endif
+			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) > bereich
+			}else if (dy <= bereich && dx > bereich){
+					iIMG[y][x] = iIMG[y][x - 1];
+			//      Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) <= bereich
+			}else if (dy > bereich && dx <= bereich){
+				iIMG[y][x] = iIMG[y - 1][x];
+			}
+		}
+	}
+
+	for(int i = 0; i < blob; i++)
+		printf("aliases %u to %u\n", i, blob_alias[i]);
+
+	printf("override aliases\n");
+	for(int x = 0; x < MAXXDIM; x++){
+		for(int y = 0; y < MAXYDIM; y++){
+			iIMG[y][x] = blob_alias[iIMG[y][x]];
+		}
+	}
+
+	// find max in label_matrix
+	printf("find max in label matrix\n");
+	unsigned short extremum =0;
+	for (int x = 0; x < MAXXDIM; x++){
+		for (int y = 0; y < MAXYDIM; y++){
+			if (iIMG[y][x] > extremum){
+				printf("new extremum %u, x%i, y%i \n", iIMG[y][x], x,y);
+				extremum = iIMG[y][x];
+			}
+		}
+	}
+	printf("extremum found %u\n", extremum);
+	printf("scale labels for image\n");
+	float faktor = (float)(PIXEL_DEPTH - 1) / (float)extremum;
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			img[y][x] = (unsigned char)((float)iIMG[y][x] * faktor);
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+	//system("cls");
+	printf("Anzahl der Blobs: %i", blob);
+	getch();
+	fflush(stdin);
+    // end code for stm32
+
+    //destroyTwoDimenArray(iIMG, MAXYDIM, MAXXDIM);
+    return blob;
+func_error:
+	//destroyTwoDimenArray(iIMG, MAXYDIM, MAXXDIM);
+	return 0;
+}
+#endif
+
+void solve_alias(unsigned short alias_arr[10000], unsigned short fist_alias, unsigned short second_alias, unsigned short blobcount){
+	//alias_arr[second_alias] = fist_alias;
+	//printf("enter solve_alias first %hu second %hu\n", fist_alias, second_alias);
+	if( blobcount > 10000 -1)
+		return;
+
+	for(int i = 0; i< blobcount; i++){
+		if(alias_arr[i] == second_alias)
+			alias_arr[i] = fist_alias;
+	}
+	return;
+	unsigned short tmp = alias_arr[fist_alias];
+	while(alias_arr[tmp] != tmp){
+		tmp = alias_arr[tmp];
+	}
+	alias_arr[second_alias] = tmp;
+}
+
+void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich){
+	int  max = 0, null_labels = 0;
+	int iIMG[MAXYDIM][MAXXDIM];
+	init_iMatrix(iIMG);
+
+    unsigned short blob_alias[10000];
+    unsigned short max_blob = 10000;
+    for(int i = 0; i< 10000; i++){
+    	blob_alias[i] = i;
+    }
+
+	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
+	int l_extend = 0;
+
+	unsigned int blob = 0;
+	for (int x = 1; x < MAXXDIM; x++){
+		for (int y = 1; y < MAXYDIM; y++) {
+			//<----- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) > bereich    -> x_c = neues Label
+			dy = img[y][x]-img[y][x-1];
+			dy = dy < 0 ? dy * -1 : dy;
+			dx = img[y][x]-img[y-1][x];
+			dx = dx < 0 ? dx * -1 : dx;
+
+			if ((dy > bereich) && (dx > bereich)){
+				if(blob == max_blob - 1)
+					return;// nicht gut genug vorverarbeitet, zu viele pixelregionen
+				iIMG[y][x] = ++blob;
+				//blob_alias[blob] = (unsigned short)blob;
+			//<---- Diff( center, links) <= bereich------------------------------- && Diff( center, unten) <= bereich   -> x_c = x_u
+			}else if ((dy <= bereich) && (dx <= bereich)) {
+				/*
+				l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+				dy2 = img[x][y] - img[x][y - l_extend];
+				dy2 = dy2 < 0 ? dy2 * -1 : dy2;
+				dx2 = img[x][y] - img[x - l_extend][y];
+				dx2 = dx2 < 0 ? dx2 * -1 : dx2;
+				if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
+					dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
+					dx2 <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
+					x > l_extend && y > l_extend) {
+					int first_alias = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
+					int second_alias = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
+					//reset_blob_label(iIMG, old_label, new_label);
+
+					if(blob_alias[first_alias] != blob_alias[second_alias]){
+						solve_alias(blob_alias,first_alias,second_alias);
+					}
+				}
+				*/
+				if (iIMG[y - 1][x] != iIMG[y][x - 1]){
+					img[y][x] = 127;
+					printf("alias y-1 %u, x-y %u, label y-1 %u, x-1 %u \n",blob_alias[iIMG[y - 1][x]],blob_alias[iIMG[y][x-1]],iIMG[y - 1][x],iIMG[y][x-1] );
+					int second_alias = iIMG[y - 1][x] > iIMG[y][x - 1] ? iIMG[y - 1][x] : iIMG[y][x - 1];
+					int first_alias = iIMG[y - 1][x] > iIMG[y][x - 1] ? iIMG[y][x - 1] : iIMG[y - 1][x];
+					if(blob_alias[second_alias]!= blob_alias[first_alias])
+						blob_alias[second_alias]= blob_alias[first_alias];
+					//reset_blob_label(iIMG, second_alias, first_alias);
+					//if(blob_alias[first_alias] != blob_alias[second_alias]){
+						//solve_alias(blob_alias,first_alias,second_alias, (unsigned short)blob);
+					//}
+				}
+				iIMG[y][x] = iIMG[y][x-1];
+			}
+			//<---- Diff( x_c, x_l) <= bereich------------------------------- && Diff( x_c, x_u) > bereich
+			else if (dy <= bereich && dx > bereich) {
+				if (x == 1){
+					iIMG[y][x] = ++blob;
+					//blob_alias[blob] = (unsigned short)blob;
+				}else
+					iIMG[y][x] = iIMG[y][x - 1];
+			}
+			//<---- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) <= bereich
+			else if (dy > bereich && dx <= bereich) {
+				iIMG[y][x] = iIMG[y - 1][x];
+			}
+		}
+	}
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+	return;
+	// Ränder der Merkermatrix markieren
+	for (int x = 0; x < MAXXDIM; x++){
+		iIMG[0][x] = iIMG[1][x];
+	}
+	for (int y = 0; y < MAXYDIM; y++){
+		iIMG[y][0] = iIMG[y][1];
+	}
+
+	if(1){
+		printf("override aliases\n");
+		for(int x = 0; x < MAXXDIM; x++){
+			for(int y = 0; y < MAXYDIM; y++){
+				iIMG[y][x] = blob_alias[iIMG[y][x]];
+			}
+		}
+		for(int i = 0; i < blob; i++)
+			printf("aliases %u to %u\n", i, blob_alias[i]);
+	}
+	// Ausgabebild nach dem Eingabebild einf�rben
+
+	// anzahl der Blobs herausfinden
+if(0){
+	max = find_abs_extremum_iMatrix(MAX, iIMG);
+	null_labels = 0;
+	for (int i = 0; i <= max; i++) {
+		float counter = 0, mittelwert = 0;
+		for (int x = 0; x < MAXXDIM; x++)
+			for (int y = 0; y < MAXYDIM; y++)
+				if (iIMG[x][y] == i) {
+					mittelwert += (float)img[x][y];
+					counter += 1.0;
+				}
+		if (counter > 0)// keine div durch 0 zulassen
+			mittelwert /= counter;
+		if (mittelwert != 0.0) {
+			for (int x = 0; x < MAXXDIM; x++)
+				for (int y = 0; y < MAXYDIM; y++)
+					if (iIMG[x][y] == i)
+						img[x][y] = (unsigned char)mittelwert;
+		}
+		else
+			null_labels++;
+	}
+
+
+}else{
+	max = find_abs_extremum_iMatrix(MAX, iIMG);
+	float faktor = (float)(PIXEL_DEPTH - 1) / (float)max;
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			img[y][x] = (unsigned char)((float)iIMG[y][x] * faktor);
+}
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+	system("cls");
+	printf("Anzahl der Blobs: %i", max - null_labels);
+	getch();
+	fflush(stdin);
+}
+
+
 // Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
 {
@@ -1127,6 +1440,77 @@ void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned 
 		fflush(stdin);
 	}
 }
+
+// Annahme: Der groesste Blob ist der Hintergrund
+// Der zweitgroesste Blob ist das Hauptobjekt des Bildes
+// Alle anderen werden dem Hintergrund gleich gemacht
+// Der Hintergrund wird mit 255 markiert
+// Das Objekt mit 0
+
+
+
+void bubblesort_blob(Blob *blobs, int length)
+{
+	for (int i = 0; i < length - 1; ++i)
+		for (int j = 0; j < length - i - 1; ++j)
+			if (blobs[j].blob_size > blobs[j + 1].blob_size) {
+				Blob tmp;
+				tmp.blob_size= blobs[j].blob_size;
+				tmp.blob_label= blobs[j].blob_label;
+				blobs[j].blob_size = blobs[j + 1].blob_size;
+				blobs[j].blob_label = blobs[j + 1].blob_label;
+				blobs[j + 1].blob_size = tmp.blob_size;
+				blobs[j + 1].blob_label = tmp.blob_label;
+			}
+}
+
+void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
+	printf("min blobsize %i\n", min_blobsize);
+	// Marker Matrix mit 0 initialisieren
+	memset(iIMG,0,sizeof(iIMG));
+	// Als erstes Oberhalb des Schwellwertes alle Pixel auf 255 schreiben
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			if((img[x][y] >= background_threshold))
+				img[x][y] = 255;
+	// markiere alle blobs (farbabstufungbeim erreichnen 10)
+	unsigned int max_blob = find_blobs(img,iIMG,5);
+	printf("blob count %i\n",max_blob);
+
+	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
+	//Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
+	Blob *blobs = (Blob*)malloc((max_blob*  sizeof(Blob)) +1);
+	memset(blobs, 0, max_blob);
+	// Blobgroessen und das entsprechende Label ermitteln
+	for (int x = 0; x < MAXXDIM; x++){
+		for (int y = 0; y < MAXYDIM; y++){
+			blobs[iIMG[x][y]].blob_size++;
+			blobs[iIMG[x][y]].blob_label = iIMG[x][y];
+		}
+	}
+	// den groessten Blob finden
+	Blob biggest_blob;
+	memset(&biggest_blob,0,sizeof(Blob));
+	for(int i = 0; i < (max_blob+1); i++){
+		if(blobs[i].blob_size > biggest_blob.blob_size){
+			biggest_blob.blob_size = blobs[i].blob_size;
+			biggest_blob.blob_label = blobs[i].blob_label;
+		}
+	}
+	// Alle Blobs löschen ausser den Hintergrund und das Objekt
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			if(iIMG[x][y] == biggest_blob.blob_label)// Hintergrund
+				img[x][y] = 255;
+			else if(blobs[iIMG[x][y]].blob_size > min_blobsize)	// Objekt
+				img[x][y] = 0;
+			else
+				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
+	free(blobs);
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+
+}
+
 
 // Funktion zur erstellen eines Berichtes �ber Tablettenblister f�r Pr�sentation
 void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM])
@@ -1256,75 +1640,6 @@ void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabe
 		printf("Press key to continue\n");
 		getch_(0);
 	}
-}
-// Annahme: Der groesste Blob ist der Hintergrund
-// Der zweitgroesste Blob ist das Hauptobjekt des Bildes
-// Alle anderen werden dem Hintergrund gleich gemacht
-// Der Hintergrund wird mit 255 markiert
-// Das Objekt mit 0
-
-
-
-void bubblesort_blob(Blob *blobs, int length)
-{
-	for (int i = 0; i < length - 1; ++i)
-		for (int j = 0; j < length - i - 1; ++j)
-			if (blobs[j].blob_size > blobs[j + 1].blob_size) {
-				Blob tmp;
-				tmp.blob_size= blobs[j].blob_size;
-				tmp.blob_label= blobs[j].blob_label;
-				blobs[j].blob_size = blobs[j + 1].blob_size;
-				blobs[j].blob_label = blobs[j + 1].blob_label;
-				blobs[j + 1].blob_size = tmp.blob_size;
-				blobs[j + 1].blob_label = tmp.blob_label;
-			}
-}
-
-void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
-	printf("min blobsize %i\n", min_blobsize);
-	// Marker Matrix mit 0 initialisieren
-	memset(iIMG,0,sizeof(iIMG));
-	// Als erstes Oberhalb des Schwellwertes alle Pixel auf 255 schreiben
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			if((img[x][y] >= background_threshold))
-				img[x][y] = 255;
-	// markiere alle blobs (farbabstufungbeim erreichnen 10)
-	unsigned int max_blob = find_blobs(img,iIMG,5);
-	printf("blob count %i\n",max_blob);
-
-	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
-	//Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
-	Blob *blobs = (Blob*)malloc((max_blob*  sizeof(Blob)) +1);
-	memset(blobs, 0, max_blob);
-	// Blobgroessen und das entsprechende Label ermitteln
-	for (int x = 0; x < MAXXDIM; x++){
-		for (int y = 0; y < MAXYDIM; y++){
-			blobs[iIMG[x][y]].blob_size++;
-			blobs[iIMG[x][y]].blob_label = iIMG[x][y];
-		}
-	}
-	// den groessten Blob finden
-	Blob biggest_blob;
-	memset(&biggest_blob,0,sizeof(Blob));
-	for(int i = 0; i < (max_blob+1); i++){
-		if(blobs[i].blob_size > biggest_blob.blob_size){
-			biggest_blob.blob_size = blobs[i].blob_size;
-			biggest_blob.blob_label = blobs[i].blob_label;
-		}
-	}
-	// Alle Blobs löschen ausser den Hintergrund und das Objekt
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			if(iIMG[x][y] == biggest_blob.blob_label)// Hintergrund
-				img[x][y] = 255;
-			else if(blobs[iIMG[x][y]].blob_size > min_blobsize)	// Objekt
-				img[x][y] = 0;
-			else
-				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
-	free(blobs);
-	writeImage_ppm(img, MAXXDIM, MAXYDIM);
-
 }
 
 Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label){

@@ -63,6 +63,7 @@ void segmentierung_von_otsu(unsigned char img[MAXXDIM][MAXYDIM], unsigned char i
 void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int threshold);
 void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
 		int iteration, int keine_fransen, int writeImage, int iterationen);
+void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich);
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage);
 void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM]);
 void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize);
@@ -70,8 +71,9 @@ void invert(unsigned char img[MAXXDIM][MAXYDIM]);
 //void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold);
 
 // Merkmalsextraktion
+
 void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
-Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
+Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel);
 Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label);
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
 double orientierung(Momente m);
