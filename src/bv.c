@@ -1420,6 +1420,249 @@ if(0){
 }
 
 
+//Labling connected components in an image, where non-zero pixels are 
+// deemed as foreground, and will be labeled with an positive integer
+// while background pixels will be labled with zeros.
+//Input and output are 2D matrices of size h-by-w.
+//Return maxLabel. Output labels are continuously ranged between [0,maxLabel).
+//Assume each pixel has 4 neighbors.
+//yuxianguo, 2018/3/27
+
+int bwLabel(unsigned char img[MAXXDIM][MAXYDIM])
+{
+	unsigned int label[MAXYDIM][MAXXDIM];
+	memset(label, 0, MAXXDIM*MAXYDIM*sizeof(int));
+	//link[i]:
+	//(1) link label value "i" to its connected component (another label value);
+	//(2) if link[i] == i, then it is a root.
+	int maxComponents = (MAXXDIM * MAXYDIM >> 1) + 1; //max possible connected components (38400 @ 320x240px)
+	int link[maxComponents];
+	int lb = 1, x, y, a, b, t;
+	int h = MAXYDIM;
+	int w = MAXXDIM;
+	link[0] = 0;
+	//first row
+	if(img[0][0]) {
+		label[0][0] = lb;
+		link[lb] = lb;
+		lb++;
+	}
+	for(x = 1; x < w; x++)
+		if(img[0][x]) {
+			if(label[0][x - 1])
+				label[0][x] = label[0][x - 1];
+		else {
+			label[0][x] = lb;
+			link[lb] = lb;
+			lb++;
+		}
+	}
+	//bw += w, p += w;
+	//rest rows
+	for(y = 1; y < h; y++) {
+		if(img[y][0]) {
+			if(label[y-1][x])
+				label[y][0] = label[y-1][0];
+			else {
+				label[y][0] = lb;
+				link[lb] = lb;
+				lb++;
+			}
+		}
+		for(x = 1; x < w; x++){
+			if(img[y][x]) {
+				a = label[y][x - 1];
+				b = label[y-1][x]; //left & top
+				if(a) {
+					if(a == b)
+						label[y][x] = a;
+					else {
+						//find root of a
+						t = a;
+						while(a != link[a])
+							a = link[a];
+						label[y][x] = link[t] = a;
+						if(b) {
+							//find root of b
+							t = b;
+							while(b != link[b])
+								b = link[b];
+							link[t] = b;
+							//link b to a or link a to b, both fine
+							if(a < b) link[b] = a; else link[a] = b;
+						}
+					}
+				}
+				else if(b) {
+					//find root of b
+					t = b;
+					while(b != link[b])
+						b = link[b];
+					label[y][x] = link[t] = b;
+				}
+				else {
+					//generate a new component
+					label[y][x] = lb;
+					link[lb] = lb;
+					lb++;
+				}
+			}
+		}
+	}
+ 
+	//Rearrange the labels with continuous numbers
+	t = 1;
+	for(x = 1; x < lb; x++)
+		if(x == link[x]) {
+			link[x] = -t; //using negative values to denote roots
+			t++;
+		}
+	for(x = 1; x < lb; x++) {
+		//find the root of x
+		y = x;
+		while(link[y] >= 0)
+			y = link[y];
+		//set the value of label x
+		link[x] = link[y];
+	}
+	//Negative to positive
+	for(x = 1; x < lb; x++)
+		link[x] = -link[x];
+ 
+	//Replace existing label values by the corresponding root label values
+	//p = label;
+	for(y = 0; y < h; y++)
+		for(x = 0; x < w; x++)
+			label[y][x] = link[label[y][x]];
+
+	float faktor = (float)(PIXEL_DEPTH - 1) / (float)t;
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			img[y][x] = (unsigned char)((float)label[y][x] * faktor);
+
+	writeImage_ppm(img,MAXXDIM,MAXYDIM);
+	return t; //num components (maxLabel + 1)
+}
+int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
+{
+	unsigned int label[MAXYDIM][MAXXDIM];
+	memset(label, 0, MAXXDIM*MAXYDIM*sizeof(int));
+	//link[i]:
+	//(1) link label value "i" to its connected component (another label value);
+	//(2) if link[i] == i, then it is a root.
+	int maxComponents = (MAXXDIM * MAXYDIM >> 1) + 1; //max possible connected components (38400 @ 320x240px)
+	int link[maxComponents];
+	int lb = 1, x, y, a, b, t;
+	int h = MAXYDIM;
+	int w = MAXXDIM;
+	int range = PIXEL_DEPTH /16;
+	int th;
+	link[0] = 0;
+	//first row
+	for(th = 0; th < PIXEL_DEPTH /16; th++){
+		if(img[0][0]) {
+			label[0][0] = lb;
+			link[lb] = lb;
+			lb++;
+		}
+		for(x = 1; x < w; x++)
+			if(img[0][x]) {
+				if(label[0][x - 1])
+					label[0][x] = label[0][x - 1];
+			else {
+				label[0][x] = lb;
+				link[lb] = lb;
+				lb++;
+			}
+		}
+		//bw += w, p += w;
+		//rest rows
+		for(y = 1; y < h; y++) {
+			if(img[y][0]) {
+				if(label[y-1][x])
+					label[y][0] = label[y-1][0];
+				else {
+					label[y][0] = lb;
+					link[lb] = lb;
+					lb++;
+				}
+			}
+			for(x = 1; x < w; x++){
+				if(img[y][x]) {
+					a = label[y][x - 1];
+					b = label[y-1][x]; //left & top
+					if(a) {
+						if(a == b)
+							label[y][x] = a;
+						else {
+							//find root of a
+							t = a;
+							while(a != link[a])
+								a = link[a];
+							label[y][x] = link[t] = a;
+							if(b) {
+								//find root of b
+								t = b;
+								while(b != link[b])
+									b = link[b];
+								link[t] = b;
+								//link b to a or link a to b, both fine
+								if(a < b) link[b] = a; else link[a] = b;
+							}
+						}
+					}
+					else if(b) {
+						//find root of b
+						t = b;
+						while(b != link[b])
+							b = link[b];
+						label[y][x] = link[t] = b;
+					}
+					else {
+						//generate a new component
+						label[y][x] = lb;
+						link[lb] = lb;
+						lb++;
+					}
+				}
+			}
+		}
+	}
+
+	//Rearrange the labels with continuous numbers
+	t = 1;
+	for(x = 1; x < lb; x++)
+		if(x == link[x]) {
+			link[x] = -t; //using negative values to denote roots
+			t++;
+		}
+	for(x = 1; x < lb; x++) {
+		//find the root of x
+		y = x;
+		while(link[y] >= 0)
+			y = link[y];
+		//set the value of label x
+		link[x] = link[y];
+	}
+	//Negative to positive
+	for(x = 1; x < lb; x++)
+		link[x] = -link[x];
+
+	//Replace existing label values by the corresponding root label values
+	//p = label;
+	for(y = 0; y < h; y++)
+		for(x = 0; x < w; x++)
+			label[y][x] = link[label[y][x]];
+
+	float faktor = (float)(PIXEL_DEPTH - 1) / (float)t;
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			img[y][x] = (unsigned char)((float)label[y][x] * faktor);
+
+	writeImage_ppm(img,MAXXDIM,MAXYDIM);
+	return t; //num components (maxLabel + 1)
+}
+
 // Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
 {
