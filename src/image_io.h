@@ -1,5 +1,6 @@
 #define MAXXDIM 256
 #define MAXYDIM 256
+#define MAXBLOBS (MAXXDIM * MAXYDIM >> 1)
 
 #define PIXEL_DEPTH 256
 #define HISTO_KUMULATIV 1

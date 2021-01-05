@@ -26,6 +26,12 @@ typedef struct{
 	long int Ixy;	// Deviationsmoment in xy Richtung
 } Momente;
 
+typedef struct{
+	unsigned int biggestBlobPxCount;
+	unsigned int biggestBlobLabel;
+	unsigned int BlobCount;
+}BlobColoring;
+
 
 		// bin�re Bildverarbeitung
 void shrink(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM]);
@@ -60,14 +66,20 @@ void calc_asm_energie(float fIMG[MAXXDIM][MAXYDIM]);
 
 //Segmentierung
 void segmentierung_von_otsu(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM]);
-void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int threshold);
+void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], int threshold);
 void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
 		int iteration, int keine_fransen, int writeImage, int iterationen);
 void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich);
-int bwLabel(unsigned char img[MAXXDIM][MAXYDIM]);
+
+int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
+int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo);
+int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
+void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
+
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage);
 void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM]);
 void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize);
+
 void invert(unsigned char img[MAXXDIM][MAXYDIM]);
 //void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold);
 

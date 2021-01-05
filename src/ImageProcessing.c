@@ -1412,7 +1412,8 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 				{
 				case 0:
 					cls();
-					segmentierung_binaer(img, img2, threshold);
+					segmentierung_binaer(img, threshold);
+					writeImage_ppm(img,MAXXDIM,MAXYDIM);
 					break;
 				case 1:
 					cls();
@@ -1424,8 +1425,8 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 3:
 					cls();
-					//blob_coloring_imagesensitiv(img, img2, iIMG, intervall[1],1, 1,1);
-					fast_blob_coloring(img, intervall[1]);
+					BlobColoring ColInfo;
+					bwLabel(img,iIMG,&ColInfo);
 					break;
 				case 4:
 					cls();
@@ -1626,22 +1627,42 @@ void menu()
 			}
 	}
 }
-
-extern void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich);
-extern void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
-		int intervall, int keine_fransen, int writeImage, int iterationen);
-extern int bwLabel(unsigned char img[MAXXDIM][MAXYDIM]);
-int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
+extern void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], int threshold);
+extern int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
+extern int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo);
+extern int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
+extern void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
+//int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
 int main() {
 
 if(1){
 	unsigned char image[MAXXDIM][MAXYDIM];
 	unsigned char image2[MAXXDIM][MAXYDIM];
-	int iIMG[MAXXDIM][MAXYDIM];
+	unsigned int iIMG[MAXXDIM][MAXYDIM];
+	BlobColoring ColInfo;
 	readImage_ppm(image);
+	segmentierung_binaer(image,127);
+	writeImage_ppm(image, MAXXDIM, MAXYDIM);
+
+	bwLabel(image,iIMG, &ColInfo);
+	labelMatrixToImage(iIMG,image2, &ColInfo);
+	writeImage_ppm(image2, MAXXDIM, MAXYDIM);
+
+	bwLabelDeleteSmallBlobs(iIMG, 200, &ColInfo);
+	labelMatrixToImage(iIMG,image2, &ColInfo);
+	writeImage_ppm(image2, MAXXDIM, MAXYDIM);
+
+	bwLabelJoinBlobs(iIMG,&ColInfo);
+	labelMatrixToImage(iIMG,image2, &ColInfo);
+	writeImage_ppm(image2, MAXXDIM, MAXYDIM);
+
+	labelMatrixToImage(iIMG,image, &ColInfo);
+	labelMatrixToImage(iIMG,image2, &ColInfo);
+	writeImage_ppm(image2, MAXXDIM, MAXYDIM);
+
 	//blob_coloring_imagesensitiv(image, image2, iIMG, 10, 1, 1, 1);
 	//fast_blob_coloring(image,10);
-	bwLabelThresholding(image,2,10);
+	//bwLabelThresholding(image,2,10);
 	return 0;
 }
 

@@ -929,15 +929,16 @@ void segmentierung_von_otsu(unsigned char img[MAXXDIM][MAXYDIM], unsigned char i
 	printf("Druecken Sie eine beliebige Taste, um die Operation durchzufuehren.\n");
 	getch();
 	fflush(stdin);
-	segmentierung_binaer(img, img2, iSchwelle);
+	segmentierung_binaer(img, iSchwelle);
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
 }
 
-void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int threshold)
+void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], int threshold)
 {
 	for (int x = 0; x < MAXXDIM; x++)
 		for (int y = 0; y < MAXYDIM; y++)
-			img2[x][y] = img[x][y] <= threshold ? 0 : 255;
-	writeImage_ppm(img2, MAXXDIM, MAXYDIM);
+			img[x][y] = img[x][y] <= threshold ? 0 : 255;
+	//writeImage_ppm(img2, MAXXDIM, MAXYDIM);
 }
 
 // Blob-Coloring mit L�sung der Ausfransungen, mit Iterationsverfahren zum Verbessern der Segmentierung
@@ -1121,305 +1122,6 @@ void destroyTwoDimenArray(unsigned short ** ptr, unsigned short row,unsigned sho
 }
 
 
-
-#define L_EXTEND 0
-#if 0
-unsigned int fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich){
-    //unsigned short ** iIMG = allocateTwoDimenArray(MAXYDIM, MAXXDIM);
-	printf("sizeof unsigned short %i\n", sizeof(unsigned short));
-    unsigned short iIMG[MAXYDIM][MAXXDIM];
-    // start code for stm32
-    unsigned short blob_alias[10000];
-    //for(int i = 0; i<10000;){
-    //	blob_alias[i]=i++;
-    //}
-    unsigned short max_blob = 10000;
-    for(int i = 0; i< 10000; i++){
-    	blob_alias[i] = i;
-    }
-	for (int x = 0; x < MAXXDIM; x++){
-		for (int y = 0; y < MAXYDIM; y++){
-			iIMG[y][x] = 0;
-		}
-	}
-	unsigned short blob = 0;
-	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
-	int l_extend = 0;
-	printf("arrays initialized\n");
-	for (int y = 1; y < MAXYDIM; y++){
-		for (int x = 1; x < MAXXDIM; x++){
-			dx = img[y][x]-img[y][x-1];
-			dx = dx < 0 ? dx * -1 : dx;
-			dy = img[y][x]-img[y-1][x];
-			dy = dy < 0 ? dy * -1 : dy;
-			//       Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) > bereich    -> x_c = neues Label
-			if (dy > bereich && dx > bereich){
-				if(blob == (max_blob-1)){
-					goto func_error;
-				}
-				iIMG[y][x] = (unsigned short)++blob;
-				blob_alias[blob] = (unsigned short)blob;
-			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) <= bereich   -> x_c = x_u
-			}else if (dy <= bereich && dx <= bereich) {
-				iIMG[y][x] = iIMG[y][x - 1];
-				continue;
-#if L_EXTEND == 1
-				l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
-				dx2 = img[y][x] - img[y][x - l_extend];
-				dx2 = dx2 < 0 ? dx2 * -1 : dx2;
-				dy2 = img[y][x] - img[y - l_extend][x];
-				dy2 = dy2 < 0 ? dy2 * -1 : dy2;
-				if ((iIMG[y - 1][x] != iIMG[y][x - 1]) &&	// Label stimmen nicht �berein -> Selbe Region?
-					(dy2 <= bereich) && // L-Maske verbreitern -> immernoch im Bereich?
-					(dx2 <= bereich) && // L-Maske verlängern -> immernoch im Bereich?
-					(x > l_extend) && (y > l_extend)) {
-
-					//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
-					unsigned short higher_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y-1][x] : iIMG[y][x-1];
-					unsigned short lower_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y][x-1] : iIMG[y-1][x];
-
-					printf("blob collision\n");
-					// Blob alias liste verwalten
-					// TODO: write function to create alias table
-					// check ob höheres label ein alias von dem kleineren ist
-					for (int x = 0; x < MAXXDIM; x++)
-						for (int y = 0; y < MAXYDIM; y++)
-							if (iIMG[y][x] == higher_label)
-								iIMG[x][y] = lower_label;
-					/*
-					if(blob_alias[higher_label] != blob_alias[lower_label]){
-						solve_alias(blob_alias, lower_label, higher_label);
-					}
-					*/
-					iIMG[y][x] = lower_label;
-					continue;
-				}
-				iIMG[y][x] = iIMG[y][x- 1];
-#elif L_EXTEND == 0
-				//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
-				unsigned short higher_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y-1][x] : iIMG[y][x-1];
-				unsigned short lower_label = iIMG[y-1][x] > iIMG[y][x-1] ? iIMG[y][x-1] : iIMG[y-1][x];
-				if (iIMG[y - 1][x] != iIMG[y][x - 1]){
-					//printf("blob collision\n");
-					// Blob alias liste verwalten
-					// TODO: write function to create alias table
-					// check ob höheres label ein alias von dem kleineren ist
-					if(blob_alias[higher_label] != blob_alias[lower_label]){
-						solve_alias(blob_alias, higher_label ,lower_label);
-					}
-				}
-				// das kleinere Label vergeben, da dieser blob als erstes erkannt wurde
-				iIMG[y][x] = lower_label;
-#endif
-			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) > bereich
-			}else if (dy <= bereich && dx > bereich){
-					iIMG[y][x] = iIMG[y][x - 1];
-			//      Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) <= bereich
-			}else if (dy > bereich && dx <= bereich){
-				iIMG[y][x] = iIMG[y - 1][x];
-			}
-		}
-	}
-
-	for(int i = 0; i < blob; i++)
-		printf("aliases %u to %u\n", i, blob_alias[i]);
-
-	printf("override aliases\n");
-	for(int x = 0; x < MAXXDIM; x++){
-		for(int y = 0; y < MAXYDIM; y++){
-			iIMG[y][x] = blob_alias[iIMG[y][x]];
-		}
-	}
-
-	// find max in label_matrix
-	printf("find max in label matrix\n");
-	unsigned short extremum =0;
-	for (int x = 0; x < MAXXDIM; x++){
-		for (int y = 0; y < MAXYDIM; y++){
-			if (iIMG[y][x] > extremum){
-				printf("new extremum %u, x%i, y%i \n", iIMG[y][x], x,y);
-				extremum = iIMG[y][x];
-			}
-		}
-	}
-	printf("extremum found %u\n", extremum);
-	printf("scale labels for image\n");
-	float faktor = (float)(PIXEL_DEPTH - 1) / (float)extremum;
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			img[y][x] = (unsigned char)((float)iIMG[y][x] * faktor);
-	writeImage_ppm(img, MAXXDIM, MAXYDIM);
-	//system("cls");
-	printf("Anzahl der Blobs: %i", blob);
-	getch();
-	fflush(stdin);
-    // end code for stm32
-
-    //destroyTwoDimenArray(iIMG, MAXYDIM, MAXXDIM);
-    return blob;
-func_error:
-	//destroyTwoDimenArray(iIMG, MAXYDIM, MAXXDIM);
-	return 0;
-}
-#endif
-
-void solve_alias(unsigned short alias_arr[10000], unsigned short fist_alias, unsigned short second_alias, unsigned short blobcount){
-	//alias_arr[second_alias] = fist_alias;
-	//printf("enter solve_alias first %hu second %hu\n", fist_alias, second_alias);
-	if( blobcount > 10000 -1)
-		return;
-
-	for(int i = 0; i< blobcount; i++){
-		if(alias_arr[i] == second_alias)
-			alias_arr[i] = fist_alias;
-	}
-	return;
-	unsigned short tmp = alias_arr[fist_alias];
-	while(alias_arr[tmp] != tmp){
-		tmp = alias_arr[tmp];
-	}
-	alias_arr[second_alias] = tmp;
-}
-
-void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich){
-	int  max = 0, null_labels = 0;
-	int iIMG[MAXYDIM][MAXXDIM];
-	init_iMatrix(iIMG);
-
-    unsigned short blob_alias[10000];
-    unsigned short max_blob = 10000;
-    for(int i = 0; i< 10000; i++){
-    	blob_alias[i] = i;
-    }
-
-	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
-	int l_extend = 0;
-
-	unsigned int blob = 0;
-	for (int x = 1; x < MAXXDIM; x++){
-		for (int y = 1; y < MAXYDIM; y++) {
-			//<----- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) > bereich    -> x_c = neues Label
-			dy = img[y][x]-img[y][x-1];
-			dy = dy < 0 ? dy * -1 : dy;
-			dx = img[y][x]-img[y-1][x];
-			dx = dx < 0 ? dx * -1 : dx;
-
-			if ((dy > bereich) && (dx > bereich)){
-				if(blob == max_blob - 1)
-					return;// nicht gut genug vorverarbeitet, zu viele pixelregionen
-				iIMG[y][x] = ++blob;
-				//blob_alias[blob] = (unsigned short)blob;
-			//<---- Diff( center, links) <= bereich------------------------------- && Diff( center, unten) <= bereich   -> x_c = x_u
-			}else if ((dy <= bereich) && (dx <= bereich)) {
-				/*
-				l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
-				dy2 = img[x][y] - img[x][y - l_extend];
-				dy2 = dy2 < 0 ? dy2 * -1 : dy2;
-				dx2 = img[x][y] - img[x - l_extend][y];
-				dx2 = dx2 < 0 ? dx2 * -1 : dx2;
-				if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
-					dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
-					dx2 <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
-					x > l_extend && y > l_extend) {
-					int first_alias = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
-					int second_alias = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
-					//reset_blob_label(iIMG, old_label, new_label);
-
-					if(blob_alias[first_alias] != blob_alias[second_alias]){
-						solve_alias(blob_alias,first_alias,second_alias);
-					}
-				}
-				*/
-				if (iIMG[y - 1][x] != iIMG[y][x - 1]){
-					img[y][x] = 127;
-					printf("alias y-1 %u, x-y %u, label y-1 %u, x-1 %u \n",blob_alias[iIMG[y - 1][x]],blob_alias[iIMG[y][x-1]],iIMG[y - 1][x],iIMG[y][x-1] );
-					int second_alias = iIMG[y - 1][x] > iIMG[y][x - 1] ? iIMG[y - 1][x] : iIMG[y][x - 1];
-					int first_alias = iIMG[y - 1][x] > iIMG[y][x - 1] ? iIMG[y][x - 1] : iIMG[y - 1][x];
-					if(blob_alias[second_alias]!= blob_alias[first_alias])
-						blob_alias[second_alias]= blob_alias[first_alias];
-					//reset_blob_label(iIMG, second_alias, first_alias);
-					//if(blob_alias[first_alias] != blob_alias[second_alias]){
-						//solve_alias(blob_alias,first_alias,second_alias, (unsigned short)blob);
-					//}
-				}
-				iIMG[y][x] = iIMG[y][x-1];
-			}
-			//<---- Diff( x_c, x_l) <= bereich------------------------------- && Diff( x_c, x_u) > bereich
-			else if (dy <= bereich && dx > bereich) {
-				if (x == 1){
-					iIMG[y][x] = ++blob;
-					//blob_alias[blob] = (unsigned short)blob;
-				}else
-					iIMG[y][x] = iIMG[y][x - 1];
-			}
-			//<---- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) <= bereich
-			else if (dy > bereich && dx <= bereich) {
-				iIMG[y][x] = iIMG[y - 1][x];
-			}
-		}
-	}
-	writeImage_ppm(img, MAXXDIM, MAXYDIM);
-	return;
-	// Ränder der Merkermatrix markieren
-	for (int x = 0; x < MAXXDIM; x++){
-		iIMG[0][x] = iIMG[1][x];
-	}
-	for (int y = 0; y < MAXYDIM; y++){
-		iIMG[y][0] = iIMG[y][1];
-	}
-
-	if(1){
-		printf("override aliases\n");
-		for(int x = 0; x < MAXXDIM; x++){
-			for(int y = 0; y < MAXYDIM; y++){
-				iIMG[y][x] = blob_alias[iIMG[y][x]];
-			}
-		}
-		for(int i = 0; i < blob; i++)
-			printf("aliases %u to %u\n", i, blob_alias[i]);
-	}
-	// Ausgabebild nach dem Eingabebild einf�rben
-
-	// anzahl der Blobs herausfinden
-if(0){
-	max = find_abs_extremum_iMatrix(MAX, iIMG);
-	null_labels = 0;
-	for (int i = 0; i <= max; i++) {
-		float counter = 0, mittelwert = 0;
-		for (int x = 0; x < MAXXDIM; x++)
-			for (int y = 0; y < MAXYDIM; y++)
-				if (iIMG[x][y] == i) {
-					mittelwert += (float)img[x][y];
-					counter += 1.0;
-				}
-		if (counter > 0)// keine div durch 0 zulassen
-			mittelwert /= counter;
-		if (mittelwert != 0.0) {
-			for (int x = 0; x < MAXXDIM; x++)
-				for (int y = 0; y < MAXYDIM; y++)
-					if (iIMG[x][y] == i)
-						img[x][y] = (unsigned char)mittelwert;
-		}
-		else
-			null_labels++;
-	}
-
-
-}else{
-	max = find_abs_extremum_iMatrix(MAX, iIMG);
-	float faktor = (float)(PIXEL_DEPTH - 1) / (float)max;
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			img[y][x] = (unsigned char)((float)iIMG[y][x] * faktor);
-}
-	writeImage_ppm(img, MAXXDIM, MAXYDIM);
-	system("cls");
-	printf("Anzahl der Blobs: %i", max - null_labels);
-	getch();
-	fflush(stdin);
-}
-
-
 //Labling connected components in an image, where non-zero pixels are 
 // deemed as foreground, and will be labeled with an positive integer
 // while background pixels will be labled with zeros.
@@ -1428,15 +1130,13 @@ if(0){
 //Assume each pixel has 4 neighbors.
 //yuxianguo, 2018/3/27
 
-int bwLabel(unsigned char img[MAXXDIM][MAXYDIM])
+int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo)
 {
-	unsigned int label[MAXYDIM][MAXXDIM];
 	memset(label, 0, MAXXDIM*MAXYDIM*sizeof(int));
 	//link[i]:
 	//(1) link label value "i" to its connected component (another label value);
 	//(2) if link[i] == i, then it is a root.
-	int maxComponents = (MAXXDIM * MAXYDIM >> 1) + 1; //max possible connected components (38400 @ 320x240px)
-	int link[maxComponents];
+	int link[MAXBLOBS];
 	int lb = 1, x, y, a, b, t;
 	int h = MAXYDIM;
 	int w = MAXXDIM;
@@ -1535,140 +1235,16 @@ int bwLabel(unsigned char img[MAXXDIM][MAXYDIM])
 		for(x = 0; x < w; x++)
 			label[y][x] = link[label[y][x]];
 
-	float faktor = (float)(PIXEL_DEPTH - 1) / (float)t;
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			img[y][x] = (unsigned char)((float)label[y][x] * faktor);
-
-	writeImage_ppm(img,MAXXDIM,MAXYDIM);
-	return t; //num components (maxLabel + 1)
+	ColInfo->BlobCount = t;
+	return 0; //num components (maxLabel + 1)
 }
-int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize)
-{
-	if(thresholdSteps < 2)	// 0: error division durch 0, 1: keine sinnvollen ergebnisse
-		return 0;
-	unsigned int label[MAXYDIM][MAXXDIM];
-	memset(label, 0, MAXXDIM*MAXYDIM*sizeof(int));
-	//link[i]:
-	//(1) link label value "i" to its connected component (another label value);
-	//(2) if link[i] == i, then it is a root.
-	int maxComponents = (MAXXDIM * MAXYDIM >> 1) + 1; //max possible connected components (38400 @ 320x240px)
-	int link[maxComponents];
-	int lb = 1, x, y, a, b, t, i, max;
-	int h = MAXYDIM;
-	int w = MAXXDIM;
-	int range = PIXEL_DEPTH /thresholdSteps;
-	int th_bot, th_top, last_lb;
-	link[0] = 0;
-	last_lb = 0;
-	//first row
-	/*
-	for(i = 0; i < thresholdSteps+1; i++){
-		if(i == thresholdSteps){
-			th_bot = PIXEL_DEPTH - (PIXEL_DEPTH % thresholdSteps);
-			if(th_bot == PIXEL_DEPTH)	// keine restpixel übrig zum segmentieren
-				break;
-			th_top = PIXEL_DEPTH - 1;
-		}else{
-			th_bot = i * (PIXEL_DEPTH /thresholdSteps);
-			th_top = th_bot + (PIXEL_DEPTH/thresholdSteps);
-		}
-		*/
-		if(img[0][0]>= th_bot && img[0][0] < th_top) {
-			label[0][0] = lb;
-			link[lb] = lb;
-			lb++;
-		}
-		for(x = 1; x < w; x++)
-			if(img[0][x]>=th_bot && img[0][x] < th_top) {
-				if(label[0][x - 1]>last_lb)
-					label[0][x] = label[0][x - 1];
-			else {
-				label[0][x] = lb;
-				link[lb] = lb;
-				lb++;
-			}
-		}
-		for(y = 1; y < h; y++) {
-			if(img[y][0] >= th_bot && img[y][0] < th_top) {
-				if(label[y-1][x]>last_lb)
-					label[y][0] = label[y-1][0];
-				else {
-					label[y][0] = lb;
-					link[lb] = lb;
-					lb++;
-				}
-			}
-			for(x = 1; x < w; x++){
-				if(img[y][x] >= th_bot && img[y][x] < th_top) {
-					a = label[y][x - 1];
-					b = label[y-1][x]; //left & top
-					if(a>last_lb) {
-						if(a == b)
-							label[y][x] = a;
-						else {
-							//find root of a
-							t = a;
-							while(a != link[a])
-								a = link[a];
-							label[y][x] = link[t] = a;
-							if(b) {
-								//find root of b
-								t = b;
-								while(b != link[b])
-									b = link[b];
-								link[t] = b;
-								//link b to a or link a to b, both fine
-								if(a < b) link[b] = a; else link[a] = b;
-							}
-						}
-					}
-					else if(b>last_lb) {
-						//find root of b
-						t = b;
-						while(b != link[b])
-							b = link[b];
-						label[y][x] = link[t] = b;
-					}
-					else {
-						//generate a new component
-						label[y][x] = lb;
-						link[lb] = lb;
-						lb++;
-					}
-				}
-			}
-		}
-		last_lb = lb;
-	}
-
-	//Rearrange the labels with continuous numbers
-	t = 1;
-	for(x = 1; x < lb; x++)
-		if(x == link[x]) {
-			link[x] = -t; //using negative values to denote roots
-			t++;
-		}
-	for(x = 1; x < lb; x++) {
-		//find the root of x
-		y = x;
-		while(link[y] >= 0)
-			y = link[y];
-		//set the value of label x
-		link[x] = link[y];
-	}
-	//Negative to positive
-	for(x = 1; x < lb; x++)
-		link[x] = -link[x];
-
-	//Replace existing label values by the corresponding root label values
-	//p = label;
-	for(y = 0; y < h; y++)
-		for(x = 0; x < w; x++)
-			label[y][x] = link[label[y][x]];
-	// override link table with zeros
-
-	memset(link, 0, sizeof(int) * maxComponents);
+/*
+ * returns the index of the
+ */
+int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo){
+	int link[MAXBLOBS];
+	int x,y,w = MAXXDIM, h = MAXYDIM, lb = (int)ColInfo->BlobCount,new_labels;
+	memset(link, 0, sizeof(int) * MAXBLOBS);
 	// calculate blobsizes
 	for(x = 0; x < w; x++){
 		for(y=0;y<h;y++){
@@ -1676,42 +1252,67 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps,
 		}
 	}
 	// find biggest blob -> must be background
-	max = 0;
+	int max = 0;
 	int max_index = 0;
-	for(i = 0; i < lb; i++){
+	for(int i = 0; i < lb; i++){
 		if(link[i] > max){
 			max = link[i];
 			max_index = i;
 		}
 	}
-	// set labels to background if they are smaller then accepted, 1:background, 0: blob
-	for(i = 0; i < lb; i++){
-			link[i] = link[i] < minBlobSize ? 1 : 0;
-	}
-	// override to small blobs
-	for(x = 0; x < w; x++){
-		for(y=0;y<h;y++){
-			if(link[label[y][x]])
-			label[y][x] = max_index;
+	ColInfo->biggestBlobPxCount = max;
+	// set labels to background if they are smaller as accepted, 1:background, 0: blob
+	// mark too small blobs
+	for(int i = 0; i < lb; i++){
+		if(link[i]<minBlobSize){
+			ColInfo->biggestBlobPxCount += link[i];
+			link[i] = -link[i];
 		}
 	}
-	max = 0;
-	for(x = 0; x < w; x++){
-		for(y=0;y<h;y++){
-			if(label[y][x]> 0)
-				max = label[y][x];
-		}
-	}
+	// relabel accepted blobs
+	new_labels = 0;
+	for(int i = 0; i < lb; i++)
+		if(link[i]>=0)
+			link[i] = new_labels++;
+	// set too small blobs to background
+	for(int i = 0; i < lb; i++)
+		if(link[i]<0)
+			link[i] = link[max_index];
 
-	float faktor = (float)(PIXEL_DEPTH - 1) / (float)t;//max;
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			//img[y][x] = label[y][x] != 0 ? 255 :0;
-			img[y][x] = (unsigned char)((float)label[y][x] * faktor);
+	// relabel blobmatrix
+	for(x = 0; x < w; x++)
+		for(y=0;y<h;y++)
+			label[y][x] = link[label[y][x]];
+	// return label of the biggest blob <-> background
+	ColInfo->biggestBlobLabel = (unsigned int)link[max_index];
+	ColInfo->BlobCount = new_labels;
 
-	writeImage_ppm(img,MAXXDIM,MAXYDIM);
-	return t; //num components (maxLabel + 1)
+	return 0;
 }
+// joins all blobs, that are not background
+int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo){
+	for(int x = 0; x < MAXXDIM; x++)
+		for(int y = 0; y < MAXYDIM; y++)
+				label[y][x] = label[y][x] != ColInfo->biggestBlobLabel ? 1 : 0;
+	// nur noch 2 blob: hintergrund und vordergrund
+	ColInfo->BlobCount = 2;
+	ColInfo->biggestBlobPxCount = ColInfo->biggestBlobPxCount < (MAXXDIM*MAXYDIM/2) ?
+		(MAXXDIM*MAXYDIM - ColInfo->biggestBlobPxCount) : ColInfo->biggestBlobPxCount;
+	ColInfo->biggestBlobLabel = 1;
+	return 0;
+}
+
+void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo){
+	int x,y;
+	float faktor = (float)(PIXEL_DEPTH - 1) / (float)(ColInfo->BlobCount-1);
+	for (x = 0; x < MAXXDIM; x++)
+		for (y = 0; y < MAXYDIM; y++)
+			img[y][x] = (unsigned char)((float)label[y][x] * faktor);
+}
+
+
+
+
 
 /*
 	//Replace existing label values by the corresponding root label values
