@@ -1631,18 +1631,19 @@ extern void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich)
 extern void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
 		int intervall, int keine_fransen, int writeImage, int iterationen);
 extern int bwLabel(unsigned char img[MAXXDIM][MAXYDIM]);
-extern int bwLabelThreshold(unsigned char img[MAXXDIM][MAXYDIM], unsigned char threshold);
+int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
 int main() {
 
-
+if(1){
 	unsigned char image[MAXXDIM][MAXYDIM];
 	unsigned char image2[MAXXDIM][MAXYDIM];
 	int iIMG[MAXXDIM][MAXYDIM];
 	readImage_ppm(image);
 	//blob_coloring_imagesensitiv(image, image2, iIMG, 10, 1, 1, 1);
 	//fast_blob_coloring(image,10);
-	bwLabelThreshold(image,10);
+	bwLabelThresholding(image,2,10);
 	return 0;
+}
 
 
 	menu();

@@ -1543,8 +1543,10 @@ int bwLabel(unsigned char img[MAXXDIM][MAXYDIM])
 	writeImage_ppm(img,MAXXDIM,MAXYDIM);
 	return t; //num components (maxLabel + 1)
 }
-int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
+int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize)
 {
+	if(thresholdSteps < 2)	// 0: error division durch 0, 1: keine sinnvollen ergebnisse
+		return 0;
 	unsigned int label[MAXYDIM][MAXXDIM];
 	memset(label, 0, MAXXDIM*MAXYDIM*sizeof(int));
 	//link[i]:
@@ -1552,22 +1554,34 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
 	//(2) if link[i] == i, then it is a root.
 	int maxComponents = (MAXXDIM * MAXYDIM >> 1) + 1; //max possible connected components (38400 @ 320x240px)
 	int link[maxComponents];
-	int lb = 1, x, y, a, b, t;
+	int lb = 1, x, y, a, b, t, i, max;
 	int h = MAXYDIM;
 	int w = MAXXDIM;
-	int range = PIXEL_DEPTH /16;
-	int th;
+	int range = PIXEL_DEPTH /thresholdSteps;
+	int th_bot, th_top, last_lb;
 	link[0] = 0;
+	last_lb = 0;
 	//first row
-	for(th = 0; th < PIXEL_DEPTH /16; th++){
-		if(img[0][0]) {
+	/*
+	for(i = 0; i < thresholdSteps+1; i++){
+		if(i == thresholdSteps){
+			th_bot = PIXEL_DEPTH - (PIXEL_DEPTH % thresholdSteps);
+			if(th_bot == PIXEL_DEPTH)	// keine restpixel übrig zum segmentieren
+				break;
+			th_top = PIXEL_DEPTH - 1;
+		}else{
+			th_bot = i * (PIXEL_DEPTH /thresholdSteps);
+			th_top = th_bot + (PIXEL_DEPTH/thresholdSteps);
+		}
+		*/
+		if(img[0][0]>= th_bot && img[0][0] < th_top) {
 			label[0][0] = lb;
 			link[lb] = lb;
 			lb++;
 		}
 		for(x = 1; x < w; x++)
-			if(img[0][x]) {
-				if(label[0][x - 1])
+			if(img[0][x]>=th_bot && img[0][x] < th_top) {
+				if(label[0][x - 1]>last_lb)
 					label[0][x] = label[0][x - 1];
 			else {
 				label[0][x] = lb;
@@ -1575,11 +1589,9 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
 				lb++;
 			}
 		}
-		//bw += w, p += w;
-		//rest rows
 		for(y = 1; y < h; y++) {
-			if(img[y][0]) {
-				if(label[y-1][x])
+			if(img[y][0] >= th_bot && img[y][0] < th_top) {
+				if(label[y-1][x]>last_lb)
 					label[y][0] = label[y-1][0];
 				else {
 					label[y][0] = lb;
@@ -1588,10 +1600,10 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
 				}
 			}
 			for(x = 1; x < w; x++){
-				if(img[y][x]) {
+				if(img[y][x] >= th_bot && img[y][x] < th_top) {
 					a = label[y][x - 1];
 					b = label[y-1][x]; //left & top
-					if(a) {
+					if(a>last_lb) {
 						if(a == b)
 							label[y][x] = a;
 						else {
@@ -1611,7 +1623,7 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
 							}
 						}
 					}
-					else if(b) {
+					else if(b>last_lb) {
 						//find root of b
 						t = b;
 						while(b != link[b])
@@ -1627,6 +1639,7 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
 				}
 			}
 		}
+		last_lb = lb;
 	}
 
 	//Rearrange the labels with continuous numbers
@@ -1653,16 +1666,97 @@ int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM])
 	for(y = 0; y < h; y++)
 		for(x = 0; x < w; x++)
 			label[y][x] = link[label[y][x]];
+	// override link table with zeros
 
-	float faktor = (float)(PIXEL_DEPTH - 1) / (float)t;
+	memset(link, 0, sizeof(int) * maxComponents);
+	// calculate blobsizes
+	for(x = 0; x < w; x++){
+		for(y=0;y<h;y++){
+			link[label[y][x]]++;
+		}
+	}
+	// find biggest blob -> must be background
+	max = 0;
+	int max_index = 0;
+	for(i = 0; i < lb; i++){
+		if(link[i] > max){
+			max = link[i];
+			max_index = i;
+		}
+	}
+	// set labels to background if they are smaller then accepted, 1:background, 0: blob
+	for(i = 0; i < lb; i++){
+			link[i] = link[i] < minBlobSize ? 1 : 0;
+	}
+	// override to small blobs
+	for(x = 0; x < w; x++){
+		for(y=0;y<h;y++){
+			if(link[label[y][x]])
+			label[y][x] = max_index;
+		}
+	}
+	max = 0;
+	for(x = 0; x < w; x++){
+		for(y=0;y<h;y++){
+			if(label[y][x]> 0)
+				max = label[y][x];
+		}
+	}
+
+	float faktor = (float)(PIXEL_DEPTH - 1) / (float)t;//max;
 	for (int x = 0; x < MAXXDIM; x++)
 		for (int y = 0; y < MAXYDIM; y++)
+			//img[y][x] = label[y][x] != 0 ? 255 :0;
 			img[y][x] = (unsigned char)((float)label[y][x] * faktor);
 
 	writeImage_ppm(img,MAXXDIM,MAXYDIM);
 	return t; //num components (maxLabel + 1)
 }
 
+/*
+	//Replace existing label values by the corresponding root label values
+	//p = label;
+	for(y = 0; y < h; y++)
+		for(x = 0; x < w; x++)
+			label[y][x] = link[label[y][x]];
+	// override link table with zeros
+
+	memset(link, 0, sizeof(int) * maxComponents);
+	// calculate blobsizes
+	for(x = 0; x < w; x++){
+		for(y=0;y<h;y++){
+			link[label[y][x]]++;
+		}
+	}
+	// find biggest blob -> must be background
+	max = 0;
+	int max_index = 0;
+	for(i = 0; i < lb; i++){
+		if(link[i] > max){
+			max = link[i];
+			max_index = i;
+		}
+	}
+	// set labels to background if they are smaller then accepted, 1:background, 0: blob
+	for(i = 0; i < lb; i++){
+			link[i] = link[i] < minBlobSize ? 1 : 0;
+	}
+	// override to small blobs
+	for(x = 0; x < w; x++){
+		for(y=0;y<h;y++){
+			if(link[label[y][x]])
+			label[y][x] = max_index;
+		}
+	}
+	max = 0;
+	for(x = 0; x < w; x++){
+		for(y=0;y<h;y++){
+			if(label[y][x]> 0)
+				max = label[y][x];
+		}
+	}
+
+*/
 // Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
 {
