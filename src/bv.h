@@ -96,6 +96,7 @@ Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, un
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
 double orientierung(Momente m);
 double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel);
+int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s);
 
 // Anderes
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val);
@@ -107,6 +108,7 @@ void get_bin_koeff(float bin_ver[50], int n, float normierung);
 double fakultaet(int n);
 void bubblesort(int *array, int length);
 void reset_blob_label(int iIMG[MAXXDIM][MAXYDIM], int oldLabel, int newLabel);
+int solveQuadricFunction(float a, float b, float c,float *n1, float *n2);
 
 
 

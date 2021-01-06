@@ -1633,6 +1633,7 @@ extern int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int min
 extern int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
 extern void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
 extern int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s);
+extern void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval);
 //int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
 int main() {
 
@@ -1640,6 +1641,12 @@ if(1){
 	unsigned char image[MAXXDIM][MAXYDIM];
 	unsigned char image2[MAXXDIM][MAXYDIM];
 	unsigned int iIMG[MAXXDIM][MAXYDIM];
+
+	memset(image, 0, sizeof(unsigned char)*MAXXDIM*MAXYDIM);
+	drawLine(image, 10,20, 200,150, 255);
+	writeImage_ppm(image, MAXXDIM, MAXYDIM);
+	return 0;
+
 	BlobColoring ColInfo;
 	readImage_ppm(image);
 

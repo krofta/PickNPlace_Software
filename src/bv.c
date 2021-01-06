@@ -1734,8 +1734,12 @@ int solveQuadricFunction(float a, float b, float c,float *n1, float *n2){
 		return 0;
 	}
 }
-
-
+/*
+ * principal componente analysis
+ * breaks down the pixel matrix to a 2x2 covariance matrix
+ * out of this matrix, the eigenvalues and eigenvectors are calculated
+ * with the vector the orientation of the blob is calculated
+ */
 int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s){
 	// evtl dynamisch allozieren um speicher zu sparen
 	int iaverage_x = 0, iaverage_y = 0;
@@ -1839,6 +1843,72 @@ int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_l
 	//int size = sizeof(Vertex);
 	//Vertex *vertices = (Vertex*)calloc(cnt, size);
 	//free(vertices);
+}
+
+#include <inttypes.h>
+/**
+ * @brief Draw a line with single color
+ * @param x1&y1 -> coordinate of the start point
+ * @param x2&y2 -> coordinate of the end point
+ * @param color -> color of the line to Draw
+ * @return none
+ */
+void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval) {
+	uint16_t swap;
+    uint16_t steep; 	// = ABS(y1 - y0) > ABS(x1 - x0);
+    uint16_t a = y1 - y0;
+    uint16_t b = x1 - x0;
+    a = a < 0 ? -a : a;
+    b = b < 0 ? -b : b;
+    steep = a > b;
+
+    if (steep) {
+		swap = x0;
+		x0 = y0;
+		y0 = swap;
+		swap = x1;
+		x1 = y1;
+		y1 = swap;
+        //_swap_int16_t(x0, y0);
+        //_swap_int16_t(x1, y1);
+    }
+    if (x0 > x1) {
+		swap = x0;
+		x0 = x1;
+		x1 = swap;
+		swap = y0;
+		y0 = y1;
+		y1 = swap;
+        //_swap_int16_t(x0, x1);
+        //_swap_int16_t(y0, y1);
+    }
+
+    int16_t dx, dy;
+    dx = x1 - x0;
+    dy = y1 - y0;
+    dy = dy < 0? -dy:dy;
+    //dy = ABS(y1 - y0);
+    int16_t err = dx / 2;
+    int16_t ystep;
+    if (y0 < y1) {
+        ystep = 1;
+    } else {
+        ystep = -1;
+    }
+    for (; x0<=x1; x0++) {
+        if (steep) {
+        	img[x0][y0] = greyval;
+            //ST7789_DrawPixel(y0, x0, color);
+        } else {
+        	img[y0][x0] = greyval;
+            //ST7789_DrawPixel(x0, y0, color);
+        }
+        err -= dy;
+        if (err < 0) {
+            y0 += ystep;
+            err += dx;
+        }
+    }
 }
 
 
