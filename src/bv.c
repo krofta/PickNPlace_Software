@@ -4,6 +4,7 @@
 #include <termios.h>
 #include <stdlib.h>
 #include <math.h>
+#include <inttypes.h>
 #include "bv.h"
 #include "getchar.h"
 
@@ -943,186 +944,6 @@ void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], int threshold)
 	//writeImage_ppm(img2, MAXXDIM, MAXYDIM);
 }
 
-// Blob-Coloring mit L�sung der Ausfransungen, mit Iterationsverfahren zum Verbessern der Segmentierung
-void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
-		int intervall, int keine_fransen, int writeImage, int iterationen)
-{
-	int bereich = 5, max = 0, null_labels = 0;
-	init_cMatrix(img2, 0);
-	init_iMatrix(iIMG);
-
-	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
-	int l_extend = 0;
-
-	float ink_bereich = (float)intervall / (float)iterationen;
-	for (int iter = 0; iter < iterationen; iter++){
-		cls();
-		printf("Bitte warten: Iteration %3i von %3i", iter + 1, iterationen);
-		bereich = (int)((float)(iter + 1)*ink_bereich);
-		unsigned int blob = 0;
-		for (int x = 1; x < MAXXDIM; x++){
-			for (int y = 1; y < MAXYDIM; y++) {
-				//<----- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) > bereich    -> x_c = neues Label
-				dy = img[x][y]-img[x][y-1];
-				dy = dy < 0 ? dy * -1 : dy;
-				dx = img[x][y]-img[x-1][y];
-				dx = dx < 0 ? dx * -1 : dx;
-
-				if ((dy > bereich) && (dx > bereich) && (iter == 0))
-					iIMG[x][y] = ++blob;
-				else if ((dy > bereich) && (dx > bereich) && (iter != 0))
-					iIMG[x][y] = ++blob;
-				//<---- Diff( center, links) <= bereich------------------------------- && Diff( center, unten) <= bereich   -> x_c = x_u
-				else if ((dy <= bereich) && (dx <= bereich) && (iter == 0)) {
-					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
-					dy2 = img[x][y] - img[x][y - l_extend];
-					dy2 = dy2 < 0 ? dy2 * -1 : dy2;
-					dx2 = img[x][y] - img[x - l_extend][y];
-					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
-					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
-						dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
-						dx2 <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
-						x > l_extend && y > l_extend) {
-						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
-						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
-						reset_blob_label(iIMG, old_label, new_label);
-					}
-					iIMG[x][y] = iIMG[x - 1][y];
-				}
-				else if (dy <= bereich && dx <= bereich && iter != 0) {
-					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
-					dy2 = img[x][y] - img[x][y - l_extend];
-					dy2 = dy2 < 0 ? dy2 * -1 : dy2;
-					dx2 = img[x][y] - img[x - l_extend][y];
-					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
-					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
-						dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
-						dx2 <= bereich && // L-Maske verlängern -> immernoch im Bereich?
-						x > l_extend && y > l_extend && keine_fransen == 1) {
-						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
-						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
-						reset_blob_label(iIMG, old_label, new_label);
-					}
-					iIMG[x][y] = iIMG[x - 1][y];
-				}
-				//<---- Diff( x_c, x_l) <= bereich------------------------------- && Diff( x_c, x_u) > bereich
-				else if (dy <= bereich && dx > bereich && iter == 0) {
-					if (y == 1)
-						iIMG[x][y] = ++blob;
-					else
-						iIMG[x][y] = iIMG[x][y - 1];
-				}
-				else if (dy <= bereich && dx > bereich && iter != 0) {
-					if (y == 1)
-						iIMG[x][y] = ++blob;
-					else
-						iIMG[x][y] = iIMG[x][y - 1];
-				}
-				//<---- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) <= bereich
-				else if (dy > bereich && dx <= bereich && iter == 0) {
-					iIMG[x][y] = iIMG[x - 1][y];
-				}
-				else if (dy > bereich && dx <= bereich && iter != 0) {
-					iIMG[x][y] = iIMG[x - 1][y];
-				}
-			}
-		}
-		// Ränder der Merkermatrix markieren
-		for (int x = 0; x < MAXXDIM; x++)
-			for (int y = 0; y < MAXYDIM; y++)
-				if (!(x == 0 || y == 0))
-					continue;
-				else if (x == 0)
-					iIMG[x][y] = iIMG[x + 1][y];
-				else if (y == 0)
-					iIMG[x][y] = iIMG[x][y + 1];
-
-		// Ausgabebild nach dem Eingabebild einf�rben
-		if (writeImage == 1) {
-			// anzahl der Blobs herausfinden
-			max = find_abs_extremum_iMatrix(MAX, iIMG);
-			null_labels = 0;
-			for (int i = 0; i <= max; i++) {
-				float counter = 0, mittelwert = 0;
-				for (int x = 0; x < MAXXDIM; x++)
-					for (int y = 0; y < MAXYDIM; y++)
-						if (iIMG[x][y] == i) {
-							mittelwert += (iter == 0 ? (float)img[x][y] : (float)img2[x][y]);
-							counter += 1.0;
-						}
-				if (counter > 0)// keine div durch 0 zulassen
-					mittelwert /= counter;
-				if (mittelwert != 0.0) {
-					for (int x = 0; x < MAXXDIM; x++)
-						for (int y = 0; y < MAXYDIM; y++)
-							if (iIMG[x][y] == i)
-								img2[x][y] = (unsigned char)mittelwert;
-				}
-				else
-					null_labels++;
-			}
-		}
-	}
-	writeImage_ppm(img2, MAXXDIM, MAXYDIM);
-	cls();
-	printf("Anzahl der Blobs: %i\n", (max - null_labels));
-	printf("Druecken Sie eine beliebige Taste zum fortfahren.\n");
-	getch();
-	fflush(stdin);
-}
-
-unsigned int find_blobs(unsigned char img[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich){
-	init_iMatrix(iIMG);
-	unsigned int blob = 0;
-	int dy = 0, dx = 0;
-
-	for (int x = 1; x < MAXXDIM; x++){
-		for (int y = 1; y < MAXYDIM; y++)
-		{
-			dy = img[x][y]-img[x][y-1];
-			dy = dy < 0 ? dy * -1 : dy;
-			dx = img[x][y]-img[x-1][y];
-			dx = dx < 0 ? dx * -1 : dx;
-			//       Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) > bereich    -> x_c = neues Label
-			if (dy > bereich && dx > bereich)
-				iIMG[x][y] = ++blob;
-			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) <= bereich   -> x_c = x_u
-			else if (dy <= bereich && dx <= bereich) {
-				//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
-				if (iIMG[x - 1][y] != iIMG[x][y - 1]){
-					// Label überscheiben! Höherwertiges Label wird überschrieben, da dies falsch inkrementiert wurde
-					int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
-					int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
-					--blob;
-					reset_blob_label(iIMG, old_label, new_label);
-				}
-				// nun gewönlich x_u, x_c zuweisen
-				iIMG[x][y] = iIMG[x - 1][y];
-			}
-			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) > bereich
-			else if (dy <= bereich && dx > bereich)
-					iIMG[x][y] = iIMG[x][y - 1];
-			//      Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) <= bereich
-			else if (dy > bereich && dx <= bereich)
-				iIMG[x][y] = iIMG[x - 1][y];
-		}
-	}
-	return blob;
-}
-
-unsigned short ** allocateTwoDimenArray(unsigned short row, unsigned short col){
-    unsigned short ** ptr = (unsigned short **) malloc(sizeof(unsigned short *)*row);
-    for(int i = 0; i < row; i++)
-        ptr[i] = (unsigned short *) malloc(sizeof(unsigned short)*col);
-    return ptr;
-}
-
-void destroyTwoDimenArray(unsigned short ** ptr, unsigned short row,unsigned short col){
-    for(int i = 0; i < row; i++)
-        free(ptr[i]);
-    free(ptr);
-}
-
 
 //Labling connected components in an image, where non-zero pixels are 
 // deemed as foreground, and will be labeled with an positive integer
@@ -1324,173 +1145,23 @@ void invert(unsigned char img[MAXXDIM][MAXYDIM]){
 
 
 
-// Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
-void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
-{
-	find_blobs(img,iIMG, bereich);
-	// Blob-Coloring nur als Bild schreiben, wenn es direkt aus dem Menu aufgreufen wird
-	// handelt es sich um ein Binaerbild ?
-	init_cMatrix(img2, 0);
-	if (writeImage == 1) {
-		int max = find_abs_extremum_iMatrix(MAX, iIMG);
-		float faktor = (float)(PIXEL_DEPTH - 1) / (float)max;
-		for (int x = 0; x < MAXXDIM; x++)
-			for (int y = 0; y < MAXYDIM; y++)
-				img2[x][y] = (unsigned char)((float)iIMG[x][y] * faktor);
-		writeImage_ppm(img2, MAXXDIM, MAXYDIM);
-		system("cls");
-		printf("Anzahl der Blobs: %i", max);
-		getch();
-		fflush(stdin);
-	}
-}
 
-// Annahme: Der groesste Blob ist der Hintergrund
-// Der zweitgroesste Blob ist das Hauptobjekt des Bildes
-// Alle anderen werden dem Hintergrund gleich gemacht
-// Der Hintergrund wird mit 255 markiert
-// Das Objekt mit 0
-
-
-
-void bubblesort_blob(Blob *blobs, int length)
-{
-	for (int i = 0; i < length - 1; ++i)
-		for (int j = 0; j < length - i - 1; ++j)
-			if (blobs[j].blob_size > blobs[j + 1].blob_size) {
-				Blob tmp;
-				tmp.blob_size= blobs[j].blob_size;
-				tmp.blob_label= blobs[j].blob_label;
-				blobs[j].blob_size = blobs[j + 1].blob_size;
-				blobs[j].blob_label = blobs[j + 1].blob_label;
-				blobs[j + 1].blob_size = tmp.blob_size;
-				blobs[j + 1].blob_label = tmp.blob_label;
-			}
-}
-
-void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
-	printf("min blobsize %i\n", min_blobsize);
-	// Marker Matrix mit 0 initialisieren
-	memset(iIMG,0,sizeof(iIMG));
-	// Als erstes Oberhalb des Schwellwertes alle Pixel auf 255 schreiben
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			if((img[x][y] >= background_threshold))
-				img[x][y] = 255;
-	// markiere alle blobs (farbabstufungbeim erreichnen 10)
-	unsigned int max_blob = find_blobs(img,iIMG,5);
-	printf("blob count %i\n",max_blob);
-
-	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
-	//Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
-	Blob *blobs = (Blob*)malloc((max_blob*  sizeof(Blob)) +1);
-	memset(blobs, 0, max_blob);
-	// Blobgroessen und das entsprechende Label ermitteln
-	for (int x = 0; x < MAXXDIM; x++){
-		for (int y = 0; y < MAXYDIM; y++){
-			blobs[iIMG[x][y]].blob_size++;
-			blobs[iIMG[x][y]].blob_label = iIMG[x][y];
-		}
-	}
-	// den groessten Blob finden
-	Blob biggest_blob;
-	memset(&biggest_blob,0,sizeof(Blob));
-	for(int i = 0; i < (max_blob+1); i++){
-		if(blobs[i].blob_size > biggest_blob.blob_size){
-			biggest_blob.blob_size = blobs[i].blob_size;
-			biggest_blob.blob_label = blobs[i].blob_label;
-		}
-	}
-	// Alle Blobs löschen ausser den Hintergrund und das Objekt
-	for (int x = 0; x < MAXXDIM; x++)
-		for (int y = 0; y < MAXYDIM; y++)
-			if(iIMG[x][y] == biggest_blob.blob_label)// Hintergrund
-				img[x][y] = 255;
-			else if(blobs[iIMG[x][y]].blob_size > min_blobsize)	// Objekt
-				img[x][y] = 0;
-			else
-				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
-	free(blobs);
-	writeImage_ppm(img, MAXXDIM, MAXYDIM);
-
-}
-
-
-// Funktion zur erstellen eines Berichtes �ber Tablettenblister f�r Pr�sentation
-void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM])
-{
-	int iOben = 1380, iUnten = 1310;
-	// Blob-Coloring ohne schreiben des Bildes aufrufen.
-	blob_coloring_markersensitiv(img, img2, iIMG, 20,0);
-	int max_blob = find_abs_extremum_iMatrix(MAX,iIMG);
-
-	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
-	int *groesse_blobs = (int*)calloc(max_blob+1, sizeof(int));
-	int *ist_tablette = (int*)calloc(max_blob+1, sizeof(int));
-
-	for (int i = 0; i <= max_blob; i++)
-		for (int x = 0; x < MAXXDIM; x++)
-			for (int y = 0; y < MAXYDIM; y++)
-				if (iIMG[x][y] == i)
-					groesse_blobs[i]++;
-	for (int ok = 0; ok <= max_blob; ok++)
-		ist_tablette[ok] = (groesse_blobs[ok] > iUnten && groesse_blobs[ok] < iOben) ? 1 : 0;
-
-
-	FILE *fp;
-	char line[100];
-	fp = fopen("c:\\bv\\report.txt", "w");
-	if (fp == NULL) 
-		printf("Datei konnte nicht geoeffnet werden.\n");
-	else {
-		sprintf(line, "Anzahl der Blobs: %10i\n", max_blob);
-		fputs(line, fp);
-		sprintf(line, "Tablette definiert durch die Groesse g: [%5i < g <%5i]\n", iUnten, iOben);
-		fputs(line, fp);
-		fputs("\n", fp);
-		for (int i = 0; i<=max_blob; i++) {
-			sprintf(line, "Blob %3i Flaecheninhalt: %10i\n", i, groesse_blobs[i]);
-			fputs(line, fp);
-			if (ist_tablette[i] == 1)
-				sprintf(line, "Blob %3i:Tablette\n", i);
-			else
-				sprintf(line, "Blob %3i:keine Tablette \n", i);
-			fputs(line, fp);
-		}
-		int anz_zab = 0;
-		for (int i = 0; i <= max_blob; i++)
-		{
-			if (ist_tablette[i] == 1)
-				anz_zab++;
-		}
-		fputs("\n", fp);
-		sprintf(line, "Die Anzahl der Tabletten betraegt: %i", anz_zab);
-		fputs(line, fp);
-		fclose(fp);
-	}
-	free(groesse_blobs);
-	free(ist_tablette);
-	printf("Report wurde erstellt.\n");
-	printf("Druecken Sie eine Taste.");
-	getch();
-}
-
-Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel){
+Blob schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel){
 	printf("blob label %u\n", bloblabel);
-	Schwerpunkt s;
+	Blob s;
 	memset(&s,0,sizeof(Schwerpunkt));
-	s.boundary_box.x1 = MAXXDIM;
-	s.boundary_box.y1 = MAXYDIM;
+	s.b.x1 = MAXXDIM;
+	s.b.y1 = MAXYDIM;
 	double sx = 0, sy = 0;
 	for (int x = 0; x < MAXXDIM; x++){
 		for (int y = 0; y < MAXYDIM; y++){
 			if((unsigned int)img[y][x] == bloblabel){
 				++s.A;
 				// für boundary box
-				s.boundary_box.x1 = x < s.boundary_box.x1 ? x : s.boundary_box.x1;
-				s.boundary_box.x2 = x > s.boundary_box.x2 ? x : s.boundary_box.x2;
-				s.boundary_box.y1 = y < s.boundary_box.y1 ? y : s.boundary_box.y1;
-				s.boundary_box.y2 = y > s.boundary_box.y2 ? y : s.boundary_box.y2;
+				s.b.x1 = x < s.b.x1 ? x : s.b.x1;
+				s.b.x2 = x > s.b.x2 ? x : s.b.x2;
+				s.b.y1 = y < s.b.y1 ? y : s.b.y1;
+				s.b.y2 = y > s.b.y2 ? y : s.b.y2;
 				// für flächenschwerpunkt
 				// +0,5 weil der 0. Pixel einen abstand zu 0 von 0,5 hat.
 				sx += (double)x+0.5;
@@ -1502,40 +1173,40 @@ Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int blobla
 		sx /= (double)s.A;
 		sy /= (double)s.A;
 	}
-	s.x = (unsigned int)sx;
-	s.y = (unsigned int)sy;
+	s.s.x = (unsigned int)sx;
+	s.s.y = (unsigned int)sy;
 	return s;
 }
 
 void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel){
 	printf("blob label %u\n", bloblabel);
-	Schwerpunkt s = schwerpunkt(img, bloblabel);
-	if(s.A > 0){
+	Blob b = schwerpunkt(img, bloblabel);
+	if(b.A > 0){
 		// Test direkt momente Berechnen
-		Momente m = widerstandsmomente(img, s, bloblabel);
+		Momente m = widerstandsmomente(img, b, bloblabel);
 		printf("Ix: %ld\n",m.Ix);
 		printf("Iy: %ld\n",m.Iy);
 		printf("Ixy: %ld\n",m.Ixy);
 
 		//Markiere Schwerpunkt im Bild
 		for(int x = 0; x< MAXXDIM; x++)
-			img[s.y][x] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[b.s.y][x] = (char)bloblabel - (PIXEL_DEPTH/2);
 		for(int y = 0; y< MAXXDIM; y++)
-			img[y][s.x] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[y][b.s.x] = (char)bloblabel - (PIXEL_DEPTH/2);
 
 		// Boundary Box im Bild Markieren
-		for(int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-			img[s.boundary_box.y1][x] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[s.boundary_box.y2][x] = (char)bloblabel - (PIXEL_DEPTH/2);
+		for(int x = b.b.x1; x <= b.b.x2; x++){
+			img[b.b.y1][x] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[b.b.y2][x] = (char)bloblabel - (PIXEL_DEPTH/2);
 		}
-		for(int y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
-			img[y][s.boundary_box.x1] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[y][s.boundary_box.x2] = (char)bloblabel - (PIXEL_DEPTH/2);
+		for(int y = b.b.y1; y <= b.b.y2; y++){
+			img[y][b.b.x1] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[y][b.b.x2] = (char)bloblabel - (PIXEL_DEPTH/2);
 		}
-		printf("Schwerpunkt x: %i\n", s.x);
-		printf("Schwerpunkt y: %i\n", s.y);
-		printf("P1xy(%i,%i)P2xy(%i,%i)P3xy(%i,%i)P4xy(%i,%i)\n", s.boundary_box.x1, s.boundary_box.y1, s.boundary_box.x2, s.boundary_box.y1, s.boundary_box.y2, s.boundary_box.x1, s.boundary_box.x2, s.boundary_box.y2);
-		printf("Fläche       : %i\n", s.A);
+		printf("Schwerpunkt x: %i\n", b.s.x);
+		printf("Schwerpunkt y: %i\n", b.s.y);
+		printf("P1xy(%i,%i)P2xy(%i,%i)P3xy(%i,%i)P4xy(%i,%i)\n", b.b.x1, b.b.y1, b.b.x2, b.b.y1, b.b.y2, b.b.x1, b.b.x2, b.b.y2);
+		printf("Fläche       : %i\n", b.A);
 		printf("Press key to save result\n");
 		writeImage_ppm(img, MAXXDIM, MAXYDIM);
 	}
@@ -1546,30 +1217,30 @@ void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabe
 	}
 }
 
-Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label){
+Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Blob b, unsigned int object_label){
 	// Widerstandsmoment I_x: Summe(x^2*dA)
 	Momente m;
 	//memset(&m,0,sizeof(Momente));
 	m.Ix = m.Iy = m.Ixy = 0;
 	//double Ix = 0, Iy = 0, Ixy = 0;
 	long int tmp = 0;
-	for(int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-		for(int y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
+	for(int x = b.b.x1; x <= b.b.x2; x++){
+		for(int y = b.b.y1; y <= b.b.y2; y++){
 			// dA ist immer 1, da ein Pixel ein dA darstellt
 			if((unsigned int)img[y][x] == object_label){
 				// Schwerpunkt ist der Bezugspunkt
 				// Abstand zum schwerpunkt y
 
 				//tmp = ((x*10 + 5) -  (s->boundary_box->x1*10));
-				tmp = ((int)s.x - x);
+				tmp = ((int)b.s.x - x);
 				tmp *= tmp;
 				//printf("tmp %ld\n", tmp);
 				m.Ix += tmp;
 				//tmp = ((y*10 + 5) -  (s->boundary_box->y1*10));
-				tmp = ((int)s.y - y);
+				tmp = ((int)b.s.y - y);
 				m.Iy += (tmp * tmp);
 				//m.Ixy += (((x*10) + 5) -  (s->boundary_box->x1*10)) * (((y*10) + 0.5) -  (s->boundary_box->y1*10));
-				m.Ixy += ((int)s.x - x) * ((int)s.y - y);
+				m.Ixy += ((int)b.s.x - x) * ((int)b.s.y - y);
 				//img[x][y] = 127;
 				/*
 				Ix += pow((((double)x + 0.5) -  (double)boundary_box->x1),2);
@@ -1588,7 +1259,7 @@ Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, un
 	return m;
 }
 
-double orientierung(Momente m){
+double blobOrientationMoments(Momente m){
 	// Drehung der Hauptachsen tan(2a)=(2*Ixy)/(Iy-Ix)
 	double x = ((double)m.Ixy*2)/(((double)m.Iy) - ((double)m.Ix));
 	double erg = atan(x)/2.0;
@@ -1597,119 +1268,23 @@ double orientierung(Momente m){
 }
 
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label){
-	Schwerpunkt s = schwerpunkt(img, object_label);
-	printf("Schwerpunkt x/y: %u %u \n", s.x, s.y);
+	Blob s = schwerpunkt(img, object_label);
+	printf("Schwerpunkt x/y: %u %u \n", s.s.x, s.s.y);
 	Momente m = widerstandsmomente(img, s, object_label);
-	double r = orientierung(m);
+	double r = blobOrientationMoments(m);
 	printf("Orientierung: ----------------\n");
 	printf("Ix %li\n",m.Ix);
 	printf("Iy %li\n",m.Iy);
 	printf("Ixy %li°\n",m.Ixy);
 	printf("Orientierung des Körpers %2.3lf°\n",r);
 
-	double w = winkel_rechteck(img, s, object_label);
+	/*double w = winkel_rechteck(img, s, object_label);
 	printf("Winkel: ----------------------\n");
 	printf("Winkel des Körpers %2.3lf°\n",w);
 	printf("Press key...\n");
+	*/
 	writeImage_ppm(img,MAXXDIM, MAXYDIM);
 	//getch_(0);
-}
-
-double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel){
-	if(s.x == 0 || s.y == 0)
-		return -100;
-	unsigned int sy = 0, sx = 0;
-	// Schauen o
-	if((s.boundary_box.y2 - s.boundary_box.y1) < 25 )
-		return -101;
-	if((s.boundary_box.x2 - s.boundary_box.x1) < 25 )
-		return -102;
-
-	printf("winkel bloblabel %u\n", bloblabel);
-	// Suche in der Boundary Box in y-Richtung nach Schnittpunkt
-	for(int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
-		if(img[y][s.boundary_box.x1] == bloblabel){
-			sy = y;
-			break;
-		}
-	}
-	// Suche in der Boundary Box in x-Richtung nach Schnittpunkten
-	for(int x = s.boundary_box.x1; x < s.boundary_box.x2; x++){
-		if(img[s.boundary_box.y1][x] == bloblabel){
-			sx = x;
-			break;
-		}
-	}
-	if( sy == 0 || sx == 0)
-		return -101;
-/*y1   B
- * 	|''''/
- * 	|   /
- * A|  /  C
- * 	| /
- * 	|/
- *sy
- * 	alpha= arctan(B/A)
- */
-	// A > B : Von oben nach unten iterieren
-	unsigned int a = 0, b = 0, count = 0;
-	double alpha = 0, beta = 0, tmp = 0;
-	unsigned  int dy = (sy - s.boundary_box.y1) ;
-	unsigned  int dx = (sx - s.boundary_box.x1) ;
-	printf("x1 %u y1 %u\n", s.boundary_box.x1,s.boundary_box.y1);
-	printf("x2 %u y2 %u\n", s.boundary_box.x2,s.boundary_box.y2);
-	printf("sx %u sy %u\n", sx, sy);
-	printf("dx %u dy %u\n", dx, dy);
-	if(dy > dx){
-		unsigned int y_end = sy - ((sy - s.boundary_box.y1) / 2);
-		for(unsigned int y = s.boundary_box.y1; y < y_end; y++){
-			for(unsigned int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-				if(img[y][x] == bloblabel){
-					a = sy - y;
-					b = x - s.boundary_box.x1;
-					if(a == 0)
-						break;
-					tmp = atan(((double)b/(double)a));
-					printf("a=%3u b=%3u w=%lf\n",a, b,(tmp* 180 / M_PI));
-					alpha += tmp;
-					count++;
-					break;
-				}
-				img[y][x] = 127;
-			}
-			//printf("y++ %u\n",y);
-		}
-		alpha /= (double)count; // IC nach links drehen
-		alpha *= 180 / M_PI;
-		return alpha;
-
-	}
-	// B > A : von links nach rechts iterieren
-	else{
-		unsigned int x_end = sx - ((sx - s.boundary_box.x1) / 2);
-		printf("x_end %u\n", x_end);
-		for(unsigned int x = s.boundary_box.x1; x < x_end; x++){
-			for(unsigned int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
-				//printf("x%u y%u\n", x,y);
-				if(img[y][x] == bloblabel){
-					b = sx - x;
-					a = y - s.boundary_box.y1;
-					if(a == 0)
-						break;
-					tmp = atan(((double)b/(double)a));
-					printf("a=%3u b=%3u w=%lf\n",a, b,90.0 - (tmp* 180 / M_PI));
-					alpha += tmp;
-					count++;
-					break;
-				}
-				img[y][x] = 127;
-			}
-		}
-		alpha /= (double)count; // IC nach links drehen
-		alpha *= 180 / M_PI;
-		alpha -= 90.0;
-		return alpha;
-	}
 }
 
 int solveQuadricFunction(float a, float b, float c,float *n1, float *n2){
@@ -1740,16 +1315,17 @@ int solveQuadricFunction(float a, float b, float c,float *n1, float *n2){
  * out of this matrix, the eigenvalues and eigenvectors are calculated
  * with the vector the orientation of the blob is calculated
  */
-int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s){
+Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Blob blob){
 	// evtl dynamisch allozieren um speicher zu sparen
 	int iaverage_x = 0, iaverage_y = 0;
 	int x, y;
-	unsigned int cnt = 0, cnt2 = 0;
+	unsigned int cnt = 0;
 	float fvar_x = 0, fvar_y = 0, fvar_xy = 0, ftmp1, ftmp2;
 	float faverage_x = 0, faverage_y = 0;
+	float alpha;
 
-	for(x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-		for(y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
+	for(x = blob.b.x1; x <= blob.b.x2; x++){
+		for(y = blob.b.y1; y <= blob.b.y2; y++){
 			if(img[y][x] == blob_label){
 				iaverage_x += x;
 				iaverage_y += y;
@@ -1764,8 +1340,8 @@ int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_l
 
 
 	// calculate variance xx, yy and xy/yx
-	for(x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
-		for(y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
+	for(x = blob.b.x1; x <= blob.b.x2; x++){
+		for(y = blob.b.y1; y <= blob.b.y2; y++){
 			if(img[y][x] == blob_label){
 				ftmp1 = ((float)x - faverage_x);
 				fvar_x += ftmp1 * ftmp1;
@@ -1778,9 +1354,6 @@ int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_l
 	fvar_x /= (cnt - 1);
 	fvar_y /= (cnt - 1);
 	fvar_xy/= (cnt - 1);
-	// the covariance matrix
-	float thecovarma[2][2];
-
 	// quadric function to solve eigenvalues: 0 = ax²+bx+c
 	// det(a) = | (cov(xx) - l) cov(xy)      |
 	//          |  cov(xy)     (cov(yy) - l) |
@@ -1793,7 +1366,7 @@ int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_l
 	float n1 = 0;	// eigenwert 1
 	float n2 = 0;	// eigenwert 2
 	if(solveQuadricFunction(a,b,c, &n1, &n2))
-		return -1;	// quadratische funktion ergibt keine 2 lösungen
+		return blob;	// quadratische funktion ergibt keine 2 lösungen
 
 	a = fvar_x;
 	b = fvar_xy;
@@ -1801,51 +1374,64 @@ int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_l
 	d = fvar_y;
 	// | a  b |  d*k=b => k=b/d   ->  | a  b | -II -> | a-ck  0  |
 	// | c  d |                       | ck dk|        | ck    bk |
-	/*
-	float k = b/ d;
-	a = a - (k*c);
-	b = 0.0;
-	if(thecovarma[0][0] == 0)	// wenn a null wird, ist der rang(A) != n
-		return -1;
-		*/
-	// der nullvektor ist immer eine lösung, ist aber kein eigenvektor -> annahme x = 1...
-
+	//
 	// (lambda*E -A)*x=0
-	// | n1-a   b       | * |x| = |0|
+	// | n1-a      b    | * |x| = |0|
 	// | c         n1-d |   |y|   |0|
 	//
 	// y = ((n1-a)/b)*x  = (c/(n1-d))*x
 	// v = {b, n1-a}, {n1-d,c}
-	Vertex v1, v2;
-	v1.x = b;
-	v1.y = n1 - a;
-	v2.x = n2 - d;
-	v2.y = c;
-	float alpha;
-	if(n1 > n2){
-		float tmp = sqrt((v1.x*v1.x)+(v1.y*v1.y));
-		v1.x = v1.x<0? -v1.x : v1.x;
-		tmp = v1.x/tmp;
-		alpha = acos(tmp);
-		alpha *= 180/M_PI;
-	}
-	else{
-		float tmp = sqrt((v2.x*v2.x)+(v2.y*v2.y));
-		v2.x = v2.x<0? -v2.x : v2.x;
-		tmp = v2.x/tmp;
-		alpha = acos(tmp);
-		alpha *= 180/M_PI;
-	}
+	blob.v1.x = b;
+	blob.v1.y = n1 - a;
+	blob.v1.eigenval = n1;
+	blob.v2.x = n2 - d;
+	blob.v2.y = c;
+	blob.v2.eigenval = n2;
 
-	return 0;
+	float tmp = sqrt((blob.v1.x*blob.v1.x)+(blob.v1.y*blob.v1.y));
+	float tmp_x = blob.v1.x<0? -blob.v1.x : blob.v1.x;
+	float tmp_y = blob.v1.y<0? -blob.v1.y : blob.v1.y;
+	blob.v1.alpha = tmp_x/tmp;
+	blob.v1.alpha = acos(blob.v1.alpha);
+	blob.v1.alpha *= 180/M_PI;
 
-	// for testing
-	//int size = sizeof(Vertex);
-	//Vertex *vertices = (Vertex*)calloc(cnt, size);
-	//free(vertices);
+	blob.v1.beta = tmp_y/tmp;
+	blob.v1.beta = acos(blob.v1.beta);
+	blob.v1.beta *= 180/M_PI;
+
+	tmp = sqrt((blob.v2.x*blob.v2.x)+(blob.v2.y*blob.v2.y));
+	tmp_x = blob.v2.x<0? -blob.v2.x : blob.v2.x;
+	tmp_y = blob.v2.y<0? -blob.v2.y : blob.v2.y;
+	blob.v2.alpha = tmp_x/tmp;
+	blob.v2.alpha = acos(blob.v2.alpha);
+	//blob.v2.alpha *= 180/M_PI;
+
+	blob.v2.beta = tmp_y/tmp;
+	blob.v2.beta = acos(blob.v2.beta);
+	//blob.v2.beta *= 180/M_PI;
+
+
+	return blob;
 }
 
-#include <inttypes.h>
+void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob b, unsigned char label){
+	// Linie errechnen, die der rotation der Eigenvektoren entsprechen
+	int xl = b.b.x2 - b.b.x1;
+	int yl = b.b.y2 - b.b.y1;
+	int radius = xl < yl ? xl : yl;
+	radius /=2;
+
+	int x1 = b.s.x - radius;
+	int x2 = b.s.x + radius;
+	// tan(alpha) = a/b => a = tan(alpha)*b
+	int y1 = (int)(tan(b.v1.alpha) * radius);
+	int y2 = b.s.y - y1;
+	y1 = b.s.y + y1;
+
+	drawLine(img,x1,y1,x2,y2,label);
+}
+
+
 /**
  * @brief Draw a line with single color
  * @param x1&y1 -> coordinate of the start point
@@ -1911,4 +1497,410 @@ void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uin
     }
 }
 
+// Annahme: Der groesste Blob ist der Hintergrund
+// Der zweitgroesste Blob ist das Hauptobjekt des Bildes
+// Alle anderen werden dem Hintergrund gleich gemacht
+// Der Hintergrund wird mit 255 markiert
+// Das Objekt mit 0
 
+
+/*
+void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize){
+	printf("min blobsize %i\n", min_blobsize);
+	// Marker Matrix mit 0 initialisieren
+	memset(iIMG,0,sizeof(iIMG));
+	// Als erstes Oberhalb des Schwellwertes alle Pixel auf 255 schreiben
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			if((img[x][y] >= background_threshold))
+				img[x][y] = 255;
+	// markiere alle blobs (farbabstufungbeim erreichnen 10)
+	unsigned int max_blob = find_blobs(img,iIMG,5);
+	printf("blob count %i\n",max_blob);
+
+	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
+	//Blob *blobs = (Blob*)calloc(max_blob+1, sizeof(Blob));
+	Blob *blobs = (Blob*)malloc((max_blob*  sizeof(Blob)) +1);
+	memset(blobs, 0, max_blob);
+	// Blobgroessen und das entsprechende Label ermitteln
+	for (int x = 0; x < MAXXDIM; x++){
+		for (int y = 0; y < MAXYDIM; y++){
+			blobs[iIMG[x][y]].blob_size++;
+			blobs[iIMG[x][y]].blob_label = iIMG[x][y];
+		}
+	}
+	// den groessten Blob finden
+	Blob biggest_blob;
+	memset(&biggest_blob,0,sizeof(Blob));
+	for(int i = 0; i < (max_blob+1); i++){
+		if(blobs[i].blob_size > biggest_blob.blob_size){
+			biggest_blob.blob_size = blobs[i].blob_size;
+			biggest_blob.blob_label = blobs[i].blob_label;
+		}
+	}
+	// Alle Blobs löschen ausser den Hintergrund und das Objekt
+	for (int x = 0; x < MAXXDIM; x++)
+		for (int y = 0; y < MAXYDIM; y++)
+			if(iIMG[x][y] == biggest_blob.blob_label)// Hintergrund
+				img[x][y] = 255;
+			else if(blobs[iIMG[x][y]].blob_size > min_blobsize)	// Objekt
+				img[x][y] = 0;
+			else
+				img[x][y] = 255;	// Unwichtige Blobs-> Hintergrund
+	free(blobs);
+	writeImage_ppm(img, MAXXDIM, MAXYDIM);
+
+}
+*/
+/*
+// Funktion zur erstellen eines Berichtes �ber Tablettenblister f�r Pr�sentation
+void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM])
+{
+	int iOben = 1380, iUnten = 1310;
+	// Blob-Coloring ohne schreiben des Bildes aufrufen.
+	blob_coloring_markersensitiv(img, img2, iIMG, 20,0);
+	int max_blob = find_abs_extremum_iMatrix(MAX,iIMG);
+
+	// dynamisch Speicher reservieren, direkt mit 0 initialisiert
+	int *groesse_blobs = (int*)calloc(max_blob+1, sizeof(int));
+	int *ist_tablette = (int*)calloc(max_blob+1, sizeof(int));
+
+	for (int i = 0; i <= max_blob; i++)
+		for (int x = 0; x < MAXXDIM; x++)
+			for (int y = 0; y < MAXYDIM; y++)
+				if (iIMG[x][y] == i)
+					groesse_blobs[i]++;
+	for (int ok = 0; ok <= max_blob; ok++)
+		ist_tablette[ok] = (groesse_blobs[ok] > iUnten && groesse_blobs[ok] < iOben) ? 1 : 0;
+
+
+	FILE *fp;
+	char line[100];
+	fp = fopen("c:\\bv\\report.txt", "w");
+	if (fp == NULL)
+		printf("Datei konnte nicht geoeffnet werden.\n");
+	else {
+		sprintf(line, "Anzahl der Blobs: %10i\n", max_blob);
+		fputs(line, fp);
+		sprintf(line, "Tablette definiert durch die Groesse g: [%5i < g <%5i]\n", iUnten, iOben);
+		fputs(line, fp);
+		fputs("\n", fp);
+		for (int i = 0; i<=max_blob; i++) {
+			sprintf(line, "Blob %3i Flaecheninhalt: %10i\n", i, groesse_blobs[i]);
+			fputs(line, fp);
+			if (ist_tablette[i] == 1)
+				sprintf(line, "Blob %3i:Tablette\n", i);
+			else
+				sprintf(line, "Blob %3i:keine Tablette \n", i);
+			fputs(line, fp);
+		}
+		int anz_zab = 0;
+		for (int i = 0; i <= max_blob; i++)
+		{
+			if (ist_tablette[i] == 1)
+				anz_zab++;
+		}
+		fputs("\n", fp);
+		sprintf(line, "Die Anzahl der Tabletten betraegt: %i", anz_zab);
+		fputs(line, fp);
+		fclose(fp);
+	}
+	free(groesse_blobs);
+	free(ist_tablette);
+	printf("Report wurde erstellt.\n");
+	printf("Druecken Sie eine Taste.");
+	getch();
+}
+*/
+
+/*
+// Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
+void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
+{
+	find_blobs(img,iIMG, bereich);
+	// Blob-Coloring nur als Bild schreiben, wenn es direkt aus dem Menu aufgreufen wird
+	// handelt es sich um ein Binaerbild ?
+	init_cMatrix(img2, 0);
+	if (writeImage == 1) {
+		int max = find_abs_extremum_iMatrix(MAX, iIMG);
+		float faktor = (float)(PIXEL_DEPTH - 1) / (float)max;
+		for (int x = 0; x < MAXXDIM; x++)
+			for (int y = 0; y < MAXYDIM; y++)
+				img2[x][y] = (unsigned char)((float)iIMG[x][y] * faktor);
+		writeImage_ppm(img2, MAXXDIM, MAXYDIM);
+		system("cls");
+		printf("Anzahl der Blobs: %i", max);
+		getch();
+		fflush(stdin);
+	}
+}
+*/
+
+/*
+// Blob-Coloring mit L�sung der Ausfransungen, mit Iterationsverfahren zum Verbessern der Segmentierung
+void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
+		int intervall, int keine_fransen, int writeImage, int iterationen)
+{
+	int bereich = 5, max = 0, null_labels = 0;
+	init_cMatrix(img2, 0);
+	init_iMatrix(iIMG);
+
+	int dy = 0, dx = 0, dy2 = 0, dx2 = 0;
+	int l_extend = 0;
+
+	float ink_bereich = (float)intervall / (float)iterationen;
+	for (int iter = 0; iter < iterationen; iter++){
+		cls();
+		printf("Bitte warten: Iteration %3i von %3i", iter + 1, iterationen);
+		bereich = (int)((float)(iter + 1)*ink_bereich);
+		unsigned int blob = 0;
+		for (int x = 1; x < MAXXDIM; x++){
+			for (int y = 1; y < MAXYDIM; y++) {
+				//<----- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) > bereich    -> x_c = neues Label
+				dy = img[x][y]-img[x][y-1];
+				dy = dy < 0 ? dy * -1 : dy;
+				dx = img[x][y]-img[x-1][y];
+				dx = dx < 0 ? dx * -1 : dx;
+
+				if ((dy > bereich) && (dx > bereich) && (iter == 0))
+					iIMG[x][y] = ++blob;
+				else if ((dy > bereich) && (dx > bereich) && (iter != 0))
+					iIMG[x][y] = ++blob;
+				//<---- Diff( center, links) <= bereich------------------------------- && Diff( center, unten) <= bereich   -> x_c = x_u
+				else if ((dy <= bereich) && (dx <= bereich) && (iter == 0)) {
+					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+					dy2 = img[x][y] - img[x][y - l_extend];
+					dy2 = dy2 < 0 ? dy2 * -1 : dy2;
+					dx2 = img[x][y] - img[x - l_extend][y];
+					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
+					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
+						dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
+						dx2 <= bereich && // L-Maske verl�ngern -> immernoch im Bereich?
+						x > l_extend && y > l_extend) {
+						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
+						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
+						reset_blob_label(iIMG, old_label, new_label);
+					}
+					iIMG[x][y] = iIMG[x - 1][y];
+				}
+				else if (dy <= bereich && dx <= bereich && iter != 0) {
+					l_extend = (bereich / 2) < 1 ? 1 : (bereich / 2);
+					dy2 = img[x][y] - img[x][y - l_extend];
+					dy2 = dy2 < 0 ? dy2 * -1 : dy2;
+					dx2 = img[x][y] - img[x - l_extend][y];
+					dx2 = dx2 < 0 ? dx2 * -1 : dx2;
+					if (iIMG[x - 1][y] != iIMG[x][y - 1] &&	// Label stimmen nicht �berein -> Selbe Region?
+						dy2 <= bereich && // L-Maske verbreitern -> immernoch im Bereich?
+						dx2 <= bereich && // L-Maske verlängern -> immernoch im Bereich?
+						x > l_extend && y > l_extend && keine_fransen == 1) {
+						int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
+						int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
+						reset_blob_label(iIMG, old_label, new_label);
+					}
+					iIMG[x][y] = iIMG[x - 1][y];
+				}
+				//<---- Diff( x_c, x_l) <= bereich------------------------------- && Diff( x_c, x_u) > bereich
+				else if (dy <= bereich && dx > bereich && iter == 0) {
+					if (y == 1)
+						iIMG[x][y] = ++blob;
+					else
+						iIMG[x][y] = iIMG[x][y - 1];
+				}
+				else if (dy <= bereich && dx > bereich && iter != 0) {
+					if (y == 1)
+						iIMG[x][y] = ++blob;
+					else
+						iIMG[x][y] = iIMG[x][y - 1];
+				}
+				//<---- Diff( x_c, x_l) > bereich------------------------------- && Diff( x_c, x_u) <= bereich
+				else if (dy > bereich && dx <= bereich && iter == 0) {
+					iIMG[x][y] = iIMG[x - 1][y];
+				}
+				else if (dy > bereich && dx <= bereich && iter != 0) {
+					iIMG[x][y] = iIMG[x - 1][y];
+				}
+			}
+		}
+		// Ränder der Merkermatrix markieren
+		for (int x = 0; x < MAXXDIM; x++)
+			for (int y = 0; y < MAXYDIM; y++)
+				if (!(x == 0 || y == 0))
+					continue;
+				else if (x == 0)
+					iIMG[x][y] = iIMG[x + 1][y];
+				else if (y == 0)
+					iIMG[x][y] = iIMG[x][y + 1];
+
+		// Ausgabebild nach dem Eingabebild einf�rben
+		if (writeImage == 1) {
+			// anzahl der Blobs herausfinden
+			max = find_abs_extremum_iMatrix(MAX, iIMG);
+			null_labels = 0;
+			for (int i = 0; i <= max; i++) {
+				float counter = 0, mittelwert = 0;
+				for (int x = 0; x < MAXXDIM; x++)
+					for (int y = 0; y < MAXYDIM; y++)
+						if (iIMG[x][y] == i) {
+							mittelwert += (iter == 0 ? (float)img[x][y] : (float)img2[x][y]);
+							counter += 1.0;
+						}
+				if (counter > 0)// keine div durch 0 zulassen
+					mittelwert /= counter;
+				if (mittelwert != 0.0) {
+					for (int x = 0; x < MAXXDIM; x++)
+						for (int y = 0; y < MAXYDIM; y++)
+							if (iIMG[x][y] == i)
+								img2[x][y] = (unsigned char)mittelwert;
+				}
+				else
+					null_labels++;
+			}
+		}
+	}
+	writeImage_ppm(img2, MAXXDIM, MAXYDIM);
+	cls();
+	printf("Anzahl der Blobs: %i\n", (max - null_labels));
+	printf("Druecken Sie eine beliebige Taste zum fortfahren.\n");
+	getch();
+	fflush(stdin);
+}
+*/
+/*
+unsigned int find_blobs(unsigned char img[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich){
+	init_iMatrix(iIMG);
+	unsigned int blob = 0;
+	int dy = 0, dx = 0;
+
+	for (int x = 1; x < MAXXDIM; x++){
+		for (int y = 1; y < MAXYDIM; y++)
+		{
+			dy = img[x][y]-img[x][y-1];
+			dy = dy < 0 ? dy * -1 : dy;
+			dx = img[x][y]-img[x-1][y];
+			dx = dx < 0 ? dx * -1 : dx;
+			//       Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) > bereich    -> x_c = neues Label
+			if (dy > bereich && dx > bereich)
+				iIMG[x][y] = ++blob;
+			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) <= bereich   -> x_c = x_u
+			else if (dy <= bereich && dx <= bereich) {
+				//Grauwerte sind im Intervall, aber die labels im Merker sind nicht identisch -> falsches label
+				if (iIMG[x - 1][y] != iIMG[x][y - 1]){
+					// Label überscheiben! Höherwertiges Label wird überschrieben, da dies falsch inkrementiert wurde
+					int old_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x - 1][y] : iIMG[x][y - 1];
+					int new_label = iIMG[x - 1][y] > iIMG[x][y - 1] ? iIMG[x][y - 1] : iIMG[x - 1][y];
+					--blob;
+					reset_blob_label(iIMG, old_label, new_label);
+				}
+				// nun gewönlich x_u, x_c zuweisen
+				iIMG[x][y] = iIMG[x - 1][y];
+			}
+			//      Diff( x_c, x_l) <= bereich                                && Diff( x_c, x_u) > bereich
+			else if (dy <= bereich && dx > bereich)
+					iIMG[x][y] = iIMG[x][y - 1];
+			//      Diff( x_c, x_l) > bereich                                && Diff( x_c, x_u) <= bereich
+			else if (dy > bereich && dx <= bereich)
+				iIMG[x][y] = iIMG[x - 1][y];
+		}
+	}
+	return blob;
+}
+*/
+
+/*
+double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel){
+	if(s.x == 0 || s.y == 0)
+		return -100;
+	unsigned int sy = 0, sx = 0;
+	// Schauen o
+	if((s.boundary_box.y2 - s.boundary_box.y1) < 25 )
+		return -101;
+	if((s.boundary_box.x2 - s.boundary_box.x1) < 25 )
+		return -102;
+
+	printf("winkel bloblabel %u\n", bloblabel);
+	// Suche in der Boundary Box in y-Richtung nach Schnittpunkt
+	for(int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
+		if(img[y][s.boundary_box.x1] == bloblabel){
+			sy = y;
+			break;
+		}
+	}
+	// Suche in der Boundary Box in x-Richtung nach Schnittpunkten
+	for(int x = s.boundary_box.x1; x < s.boundary_box.x2; x++){
+		if(img[s.boundary_box.y1][x] == bloblabel){
+			sx = x;
+			break;
+		}
+	}
+	if( sy == 0 || sx == 0)
+		return -101;
+//y1   B
+// 	|''''/
+// 	|   /
+// A|  /  C
+// 	| /
+// 	|/
+//sy
+// 	alpha= arctan(B/A)
+///
+	// A > B : Von oben nach unten iterieren
+	unsigned int a = 0, b = 0, count = 0;
+	double alpha = 0, beta = 0, tmp = 0;
+	unsigned  int dy = (sy - s.boundary_box.y1) ;
+	unsigned  int dx = (sx - s.boundary_box.x1) ;
+	printf("x1 %u y1 %u\n", s.boundary_box.x1,s.boundary_box.y1);
+	printf("x2 %u y2 %u\n", s.boundary_box.x2,s.boundary_box.y2);
+	printf("sx %u sy %u\n", sx, sy);
+	printf("dx %u dy %u\n", dx, dy);
+	if(dy > dx){
+		unsigned int y_end = sy - ((sy - s.boundary_box.y1) / 2);
+		for(unsigned int y = s.boundary_box.y1; y < y_end; y++){
+			for(unsigned int x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
+				if(img[y][x] == bloblabel){
+					a = sy - y;
+					b = x - s.boundary_box.x1;
+					if(a == 0)
+						break;
+					tmp = atan(((double)b/(double)a));
+					printf("a=%3u b=%3u w=%lf\n",a, b,(tmp* 180 / M_PI));
+					alpha += tmp;
+					count++;
+					break;
+				}
+				img[y][x] = 127;
+			}
+			//printf("y++ %u\n",y);
+		}
+		alpha /= (double)count; // IC nach links drehen
+		alpha *= 180 / M_PI;
+		return alpha;
+
+	}
+	// B > A : von links nach rechts iterieren
+	else{
+		unsigned int x_end = sx - ((sx - s.boundary_box.x1) / 2);
+		printf("x_end %u\n", x_end);
+		for(unsigned int x = s.boundary_box.x1; x < x_end; x++){
+			for(unsigned int y = s.boundary_box.y1; y < s.boundary_box.y2; y++){
+				//printf("x%u y%u\n", x,y);
+				if(img[y][x] == bloblabel){
+					b = sx - x;
+					a = y - s.boundary_box.y1;
+					if(a == 0)
+						break;
+					tmp = atan(((double)b/(double)a));
+					printf("a=%3u b=%3u w=%lf\n",a, b,90.0 - (tmp* 180 / M_PI));
+					alpha += tmp;
+					count++;
+					break;
+				}
+				img[y][x] = 127;
+			}
+		}
+		alpha /= (double)count; // IC nach links drehen
+		alpha *= 180 / M_PI;
+		alpha -= 90.0;
+		return alpha;
+	}
+}
+*/

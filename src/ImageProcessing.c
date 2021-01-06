@@ -1421,7 +1421,7 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 2:
 					cls();
-					blob_coloring_markersensitiv(img, img2,iIMG, intervall[0], 1);
+					//blob_coloring_markersensitiv(img, img2,iIMG, intervall[0], 1);
 					break;
 				case 3:
 					cls();
@@ -1430,7 +1430,7 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 4:
 					cls();
-					blob_coloring_imagesensitiv(img, img2, iIMG, intervall[2],1,1,1);
+					//blob_coloring_imagesensitiv(img, img2, iIMG, intervall[2],1,1,1);
 					break;
 				case 5:
 					cls();
@@ -1438,7 +1438,7 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 6:
 					cls();
-					biggestBlob(img,iIMG, background,500);
+					//biggestBlob(img,iIMG, background,500);
 					break;
 				case 7:
 					cls();
@@ -1632,7 +1632,7 @@ extern int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDI
 extern int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo);
 extern int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
 extern void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
-extern int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s);
+extern Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Blob blob);
 extern void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval);
 //int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
 int main() {
@@ -1641,18 +1641,20 @@ if(1){
 	unsigned char image[MAXXDIM][MAXYDIM];
 	unsigned char image2[MAXXDIM][MAXYDIM];
 	unsigned int iIMG[MAXXDIM][MAXYDIM];
-
+/*
 	memset(image, 0, sizeof(unsigned char)*MAXXDIM*MAXYDIM);
 	drawLine(image, 10,20, 200,150, 255);
 	writeImage_ppm(image, MAXXDIM, MAXYDIM);
 	return 0;
-
+*/
 	BlobColoring ColInfo;
 	readImage_ppm(image);
 
-	Schwerpunkt s = schwerpunkt(image,0);
+	Blob s = schwerpunkt(image,255);
 
-	blobOrientationPCA(image, 0 ,s);
+	Blob b = blobOrientationPCA(image,255,s);
+	show_orientation(image,b, 128);
+	writeImage_ppm(image, MAXXDIM, MAXYDIM);
 
 	return 0;
 

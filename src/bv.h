@@ -1,23 +1,19 @@
 #include "image_io.h"
 
 // Strukturen zur vereinfachung
-typedef struct {
-     unsigned int blob_label;
-     unsigned int blob_size;
-} Blob;
+
 
 typedef struct {
 	unsigned int x1;
 	unsigned int y1;
 	unsigned int x2;
 	unsigned int y2;
-} Box;
+} BoundaryBox;
 
 typedef struct {
 	unsigned int x;	// Schwerpunkt x
 	unsigned int y;	// Schwerpunkt y
-	unsigned int A;	// Fläche
-	Box boundary_box;	// Boundary Box des Objektes
+	//Box boundary_box;	// Boundary Box des Objektes
 } Schwerpunkt;
 
 typedef struct{
@@ -27,15 +23,33 @@ typedef struct{
 } Momente;
 
 typedef struct{
+	float x;
+	float y;
+	float eigenval;	// eigenwert
+    float alpha;	// angle from x-axis to vector
+    float beta;		// angle from y-axis to vector
+}Vertex;
+
+
+typedef struct {
+     unsigned int blob_label;
+ 	 unsigned int A;	// Fläche
+     Momente m;
+     BoundaryBox b;
+     Schwerpunkt s;
+     Vertex v1;	// Eigenvektor 1
+     Vertex v2; // Eigenvektor 2
+} Blob;
+
+
+
+typedef struct{
 	unsigned int biggestBlobPxCount;
 	unsigned int biggestBlobLabel;
 	unsigned int BlobCount;
 }BlobColoring;
 
-typedef struct{
-	float x;
-	float y;
-}Vertex;
+
 
 
 		// bin�re Bildverarbeitung
@@ -72,33 +86,24 @@ void calc_asm_energie(float fIMG[MAXXDIM][MAXYDIM]);
 //Segmentierung
 void segmentierung_von_otsu(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM]);
 void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], int threshold);
-void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
-		int iteration, int keine_fransen, int writeImage, int iterationen);
-void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich);
-
+void invert(unsigned char img[MAXXDIM][MAXYDIM]);
 int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
 int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo);
 int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
 void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
 
-void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage);
-void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM]);
-void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize);
 
-void invert(unsigned char img[MAXXDIM][MAXYDIM]);
-//void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold);
+
 
 // Merkmalsextraktion
-
 void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
-Schwerpunkt schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel);
-Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int object_label);
+Blob schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel);
+Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Blob b, unsigned int object_label);
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
-double orientierung(Momente m);
-double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel);
-int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s);
+double blobOrientationMoments(Momente m);
+Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Blob blob);
 
-// Anderes
+// Hilfsfunktionen
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val);
 void init_iMatrix(int iMatrix[MAXXDIM][MAXYDIM]);
 void init_fMatrix(float fMatrix[MAXXDIM][MAXYDIM]);
@@ -109,6 +114,17 @@ double fakultaet(int n);
 void bubblesort(int *array, int length);
 void reset_blob_label(int iIMG[MAXXDIM][MAXYDIM], int oldLabel, int newLabel);
 int solveQuadricFunction(float a, float b, float c,float *n1, float *n2);
+
+
+// Aussortiert
+//void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage);
+//void blister_blob(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM]);
+//void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM],unsigned int iIMG[MAXXDIM][MAXYDIM], int background_threshold, int min_blobsize);
+//void blob_coloring_imagesensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM],
+//		int iteration, int keine_fransen, int writeImage, int iterationen);
+//void fast_blob_coloring(unsigned char img[MAXYDIM][MAXXDIM], int bereich);
+//void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold);
+// double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsigned int bloblabel);
 
 
 
