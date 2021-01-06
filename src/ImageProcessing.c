@@ -1632,6 +1632,7 @@ extern int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDI
 extern int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo);
 extern int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
 extern void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
+extern int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s);
 //int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
 int main() {
 
@@ -1641,6 +1642,13 @@ if(1){
 	unsigned int iIMG[MAXXDIM][MAXYDIM];
 	BlobColoring ColInfo;
 	readImage_ppm(image);
+
+	Schwerpunkt s = schwerpunkt(image,0);
+
+	blobOrientationPCA(image, 0 ,s);
+
+	return 0;
+
 	segmentierung_binaer(image,127);
 	writeImage_ppm(image, MAXXDIM, MAXYDIM);
 

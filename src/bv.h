@@ -32,6 +32,11 @@ typedef struct{
 	unsigned int BlobCount;
 }BlobColoring;
 
+typedef struct{
+	float x;
+	float y;
+}Vertex;
+
 
 		// bin�re Bildverarbeitung
 void shrink(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM]);

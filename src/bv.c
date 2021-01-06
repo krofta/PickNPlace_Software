@@ -528,6 +528,8 @@ void gauss_filter(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDI
 	for (int i = 0; i < scale; i++)
 		free(gauss_filter[i]);
 	free(gauss_filter);
+
+
 	//init_cMatrix(img2, 0);
 	memcpy(&img2, &img, sizeof(img));
 	/*
@@ -1311,53 +1313,17 @@ void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[
 }
 
 
+void invert(unsigned char img[MAXXDIM][MAXYDIM]){
+	for(int x = 0 ; x < MAXXDIM; x++)
+		for(int y = 0; y < MAXYDIM; y++){
 
-
-
-/*
-	//Replace existing label values by the corresponding root label values
-	//p = label;
-	for(y = 0; y < h; y++)
-		for(x = 0; x < w; x++)
-			label[y][x] = link[label[y][x]];
-	// override link table with zeros
-
-	memset(link, 0, sizeof(int) * maxComponents);
-	// calculate blobsizes
-	for(x = 0; x < w; x++){
-		for(y=0;y<h;y++){
-			link[label[y][x]]++;
+			img[x][y] = (255) - img[x][y];
 		}
-	}
-	// find biggest blob -> must be background
-	max = 0;
-	int max_index = 0;
-	for(i = 0; i < lb; i++){
-		if(link[i] > max){
-			max = link[i];
-			max_index = i;
-		}
-	}
-	// set labels to background if they are smaller then accepted, 1:background, 0: blob
-	for(i = 0; i < lb; i++){
-			link[i] = link[i] < minBlobSize ? 1 : 0;
-	}
-	// override to small blobs
-	for(x = 0; x < w; x++){
-		for(y=0;y<h;y++){
-			if(link[label[y][x]])
-			label[y][x] = max_index;
-		}
-	}
-	max = 0;
-	for(x = 0; x < w; x++){
-		for(y=0;y<h;y++){
-			if(label[y][x]> 0)
-				max = label[y][x];
-		}
-	}
+	writeImage_ppm(img,MAXXDIM, MAXYDIM);
+}
 
-*/
+
+
 // Blob-Coloring mit Lösung der Ausfransungen, ohne Iterationsverafahren: zum segmentieren von einfachen Objekten ( evtl binaerisiert )
 void blob_coloring_markersensitiv(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[MAXXDIM][MAXYDIM], int iIMG[MAXXDIM][MAXYDIM], int bereich, int writeImage)
 {
@@ -1746,47 +1712,133 @@ double winkel_rechteck(unsigned char img[MAXXDIM][MAXYDIM],Schwerpunkt s, unsign
 	}
 }
 
+int solveQuadricFunction(float a, float b, float c,float *n1, float *n2){
 
-void invert(unsigned char img[MAXXDIM][MAXYDIM]){
-	for(int x = 0 ; x < MAXXDIM; x++)
-		for(int y = 0; y < MAXYDIM; y++){
-
-			img[x][y] = (255) - img[x][y];
-		}
-	writeImage_ppm(img,MAXXDIM, MAXYDIM);
+	float d;
+	d = b * b - 4 * a * c;
+	if(d < 0){
+	// komplexe zahl- wurzel aus negativer zahl....
+	//printf("%.3f%+.3fi",-b/(2*a),sqrt(-d)/(2*a));
+	//printf(", %.3f%+.3fi",-b/(2*a),-sqrt(-d)/(2*a));
+	return -1;
+	}
+	else if(d==0){
+		// doppelte nullstelle
+		*n1 = *n2 = -b /(2* a);
+		return 0;
+	}
+	else{
+		// zwei nullstellen
+		*n1 = ( -b + sqrt(d)) / (2* a);
+		*n2 = ( -b - sqrt(d)) / (2* a);
+		return 0;
+	}
 }
 
 
-/*
-void biggestBlob(unsigned char img[MAXXDIM][MAXYDIM], int background_threshold){
-	int biggest_blob = 0;
-	int greyscale = 0;
-	int abs_px[PIXEL_DEPTH];
-	printf("calc histo\n");
-	calc_absolut_histo(img,abs_px);
-	printf("calc color of biggest blobs\n");
-	for(int i = 0; i < PIXEL_DEPTH; i++){
-		if(i >= background_threshold)
-			continue;
-		if(abs_px[i] > biggest_blob){
-			biggest_blob = abs_px[i];
-			greyscale = i;
-		}
-	}
-	printf("Goesster Blob:         %i\n",biggest_blob);
-	printf("Goesster Blob Farbe:   %i\n",greyscale);
-	// Alle blobs loeschen, die nicht zu den beiden groessten gehoeren
-	printf("delete other blobs\n");
-	for (int x = 0; x < MAXXDIM; x++){
-		for (int y = 0; y < MAXYDIM; y++){
-			if((img[x][y] >= background_threshold) || (img[x][y] != greyscale)){
-				img[x][y] = 255;
+int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Schwerpunkt s){
+	// evtl dynamisch allozieren um speicher zu sparen
+	int iaverage_x = 0, iaverage_y = 0;
+	int x, y;
+	unsigned int cnt = 0, cnt2 = 0;
+	float fvar_x = 0, fvar_y = 0, fvar_xy = 0, ftmp1, ftmp2;
+	float faverage_x = 0, faverage_y = 0;
+
+	for(x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
+		for(y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
+			if(img[y][x] == blob_label){
+				iaverage_x += x;
+				iaverage_y += y;
+				cnt++;
 			}
 		}
 	}
-	writeImage_ppm(img, MAXXDIM, MAXYDIM);
-}
-*/
 
+	// Durchschnitt errechnen, auf 0,5 px genau
+	faverage_x = (float)(iaverage_x / cnt);
+	faverage_y = (float)(iaverage_y / cnt);
+
+
+	// calculate variance xx, yy and xy/yx
+	for(x = s.boundary_box.x1; x <= s.boundary_box.x2; x++){
+		for(y = s.boundary_box.y1; y <= s.boundary_box.y2; y++){
+			if(img[y][x] == blob_label){
+				ftmp1 = ((float)x - faverage_x);
+				fvar_x += ftmp1 * ftmp1;
+				ftmp2 = ((float)y - faverage_y);
+				fvar_y += ftmp2 * ftmp2;
+				fvar_xy += ftmp1*ftmp2;
+			}
+		}
+	}
+	fvar_x /= (cnt - 1);
+	fvar_y /= (cnt - 1);
+	fvar_xy/= (cnt - 1);
+	// the covariance matrix
+	float thecovarma[2][2];
+
+	// quadric function to solve eigenvalues: 0 = ax²+bx+c
+	// det(a) = | (cov(xx) - l) cov(xy)      |
+	//          |  cov(xy)     (cov(yy) - l) |
+	// al²+bl+c = l² - (cov(xx) + cov(yy))*l + (cov(xx)*cov(yy)) - (cov(xy)*cov(xy))
+
+	float a = 1.0;
+	float b = -(fvar_x + fvar_y);
+	float c = (fvar_x*fvar_y) - (fvar_xy*fvar_xy);
+	float d = 0;
+	float n1 = 0;	// eigenwert 1
+	float n2 = 0;	// eigenwert 2
+	if(solveQuadricFunction(a,b,c, &n1, &n2))
+		return -1;	// quadratische funktion ergibt keine 2 lösungen
+
+	a = fvar_x;
+	b = fvar_xy;
+	c = fvar_xy;
+	d = fvar_y;
+	// | a  b |  d*k=b => k=b/d   ->  | a  b | -II -> | a-ck  0  |
+	// | c  d |                       | ck dk|        | ck    bk |
+	/*
+	float k = b/ d;
+	a = a - (k*c);
+	b = 0.0;
+	if(thecovarma[0][0] == 0)	// wenn a null wird, ist der rang(A) != n
+		return -1;
+		*/
+	// der nullvektor ist immer eine lösung, ist aber kein eigenvektor -> annahme x = 1...
+
+	// (lambda*E -A)*x=0
+	// | n1-a   b       | * |x| = |0|
+	// | c         n1-d |   |y|   |0|
+	//
+	// y = ((n1-a)/b)*x  = (c/(n1-d))*x
+	// v = {b, n1-a}, {n1-d,c}
+	Vertex v1, v2;
+	v1.x = b;
+	v1.y = n1 - a;
+	v2.x = n2 - d;
+	v2.y = c;
+	float alpha;
+	if(n1 > n2){
+		float tmp = sqrt((v1.x*v1.x)+(v1.y*v1.y));
+		v1.x = v1.x<0? -v1.x : v1.x;
+		tmp = v1.x/tmp;
+		alpha = acos(tmp);
+		alpha *= 180/M_PI;
+	}
+	else{
+		float tmp = sqrt((v2.x*v2.x)+(v2.y*v2.y));
+		v2.x = v2.x<0? -v2.x : v2.x;
+		tmp = v2.x/tmp;
+		alpha = acos(tmp);
+		alpha *= 180/M_PI;
+	}
+
+	return 0;
+
+	// for testing
+	//int size = sizeof(Vertex);
+	//Vertex *vertices = (Vertex*)calloc(cnt, size);
+	//free(vertices);
+}
 
 
