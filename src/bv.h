@@ -27,7 +27,9 @@ typedef struct{
 	float y;
 	float eigenval;	// eigenwert
     float alpha;	// angle from x-axis to vector
+    float alpha_deg;
     float beta;		// angle from y-axis to vector
+    float beta_deg;
 }Vertex;
 
 
@@ -96,7 +98,7 @@ void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[
 
 
 // Merkmalsextraktion
-void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel);
+void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob blob);
 Blob schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel);
 Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Blob b, unsigned int object_label);
 void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
@@ -114,6 +116,12 @@ double fakultaet(int n);
 void bubblesort(int *array, int length);
 void reset_blob_label(int iIMG[MAXXDIM][MAXYDIM], int oldLabel, int newLabel);
 int solveQuadricFunction(float a, float b, float c,float *n1, float *n2);
+
+void get_integratedCircuit();
+
+// Annotation Functions
+void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob blob, unsigned char label);
+void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval) ;
 
 
 // Aussortiert

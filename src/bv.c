@@ -1150,6 +1150,7 @@ Blob schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel){
 	printf("blob label %u\n", bloblabel);
 	Blob s;
 	memset(&s,0,sizeof(Schwerpunkt));
+	s.b.x2 = s.b.y2 = 0;
 	s.b.x1 = MAXXDIM;
 	s.b.y1 = MAXYDIM;
 	double sx = 0, sy = 0;
@@ -1178,37 +1179,30 @@ Blob schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel){
 	return s;
 }
 
-void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],unsigned int bloblabel){
-	printf("blob label %u\n", bloblabel);
-	Blob b = schwerpunkt(img, bloblabel);
-	if(b.A > 0){
-		// Test direkt momente Berechnen
-		Momente m = widerstandsmomente(img, b, bloblabel);
-		printf("Ix: %ld\n",m.Ix);
-		printf("Iy: %ld\n",m.Iy);
-		printf("Ixy: %ld\n",m.Ixy);
-
+void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob blob){
+	printf("blob label %u\n", blob.blob_label);
+	//Blob b = schwerpunkt(img, bloblabel);
+	if(blob.A > 0){
 		//Markiere Schwerpunkt im Bild
 		for(int x = 0; x< MAXXDIM; x++)
-			img[b.s.y][x] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[blob.s.y][x] = (char)blob.blob_label - (PIXEL_DEPTH/2);
 		for(int y = 0; y< MAXXDIM; y++)
-			img[y][b.s.x] = (char)bloblabel - (PIXEL_DEPTH/2);
+			img[y][blob.s.x] = (char)blob.blob_label - (PIXEL_DEPTH/2);
 
 		// Boundary Box im Bild Markieren
-		for(int x = b.b.x1; x <= b.b.x2; x++){
-			img[b.b.y1][x] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[b.b.y2][x] = (char)bloblabel - (PIXEL_DEPTH/2);
+		for(int x = blob.b.x1; x <= blob.b.x2; x++){
+			img[blob.b.y1][x] = (char)blob.blob_label - (PIXEL_DEPTH/2);
+			img[blob.b.y2][x] = (char)blob.blob_label - (PIXEL_DEPTH/2);
 		}
-		for(int y = b.b.y1; y <= b.b.y2; y++){
-			img[y][b.b.x1] = (char)bloblabel - (PIXEL_DEPTH/2);
-			img[y][b.b.x2] = (char)bloblabel - (PIXEL_DEPTH/2);
+		for(int y = blob.b.y1; y <= blob.b.y2; y++){
+			img[y][blob.b.x1] = (char)blob.blob_label - (PIXEL_DEPTH/2);
+			img[y][blob.b.x2] = (char)blob.blob_label - (PIXEL_DEPTH/2);
 		}
-		printf("Schwerpunkt x: %i\n", b.s.x);
-		printf("Schwerpunkt y: %i\n", b.s.y);
-		printf("P1xy(%i,%i)P2xy(%i,%i)P3xy(%i,%i)P4xy(%i,%i)\n", b.b.x1, b.b.y1, b.b.x2, b.b.y1, b.b.y2, b.b.x1, b.b.x2, b.b.y2);
-		printf("Fläche       : %i\n", b.A);
+		printf("Schwerpunkt x: %i\n", blob.s.x);
+		printf("Schwerpunkt y: %i\n", blob.s.y);
+		printf("P1xy(%i,%i)P2xy(%i,%i)P3xy(%i,%i)P4xy(%i,%i)\n", blob.b.x1, blob.b.y1, blob.b.x2, blob.b.y1, blob.b.y2, blob.b.x1, blob.b.x2, blob.b.y2);
+		printf("Fläche       : %i\n", blob.A);
 		printf("Press key to save result\n");
-		writeImage_ppm(img, MAXXDIM, MAXYDIM);
 	}
 	else{
 		printf("No Blob found\n");
@@ -1283,7 +1277,7 @@ void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_lab
 	printf("Winkel des Körpers %2.3lf°\n",w);
 	printf("Press key...\n");
 	*/
-	writeImage_ppm(img,MAXXDIM, MAXYDIM);
+	//writeImage_ppm(img,MAXXDIM, MAXYDIM);
 	//getch_(0);
 }
 
@@ -1393,42 +1387,88 @@ Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_
 	float tmp_y = blob.v1.y<0? -blob.v1.y : blob.v1.y;
 	blob.v1.alpha = tmp_x/tmp;
 	blob.v1.alpha = acos(blob.v1.alpha);
-	blob.v1.alpha *= 180/M_PI;
+	blob.v1.alpha_deg = blob.v1.alpha*180/M_PI;
 
 	blob.v1.beta = tmp_y/tmp;
 	blob.v1.beta = acos(blob.v1.beta);
-	blob.v1.beta *= 180/M_PI;
+	blob.v1.beta_deg = blob.v1.beta*180/M_PI;
 
 	tmp = sqrt((blob.v2.x*blob.v2.x)+(blob.v2.y*blob.v2.y));
 	tmp_x = blob.v2.x<0? -blob.v2.x : blob.v2.x;
 	tmp_y = blob.v2.y<0? -blob.v2.y : blob.v2.y;
 	blob.v2.alpha = tmp_x/tmp;
 	blob.v2.alpha = acos(blob.v2.alpha);
-	//blob.v2.alpha *= 180/M_PI;
+	blob.v2.alpha_deg = blob.v2.alpha*180/M_PI;
 
 	blob.v2.beta = tmp_y/tmp;
 	blob.v2.beta = acos(blob.v2.beta);
-	//blob.v2.beta *= 180/M_PI;
+	blob.v2.beta_deg = blob.v2.beta*180/M_PI;
 
 
 	return blob;
 }
 
-void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob b, unsigned char label){
+void get_integratedCircuit(){
+	unsigned char image[MAXYDIM][MAXXDIM];
+	memset(image, 0, sizeof(unsigned char )*MAXXDIM*MAXYDIM);
+	readImage_ppm(image);
+	Blob s = schwerpunkt(image,0);
+	Blob b = blobOrientationPCA(image,0,s);
+	b.blob_label = 255;
+	show_orientation(image,b, 128);
+	zeige_schwerpunkt(image, b);
+	writeImage_ppm(image, MAXXDIM, MAXYDIM);
+}
+
+
+void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob blob, unsigned char label){
 	// Linie errechnen, die der rotation der Eigenvektoren entsprechen
-	int xl = b.b.x2 - b.b.x1;
-	int yl = b.b.y2 - b.b.y1;
+	int hyp, a ,b,a2,b2, x0,y0,x1,y1;
+	int xl = (blob.b.x2 - blob.b.x1)/2;
+	int yl = (blob.b.y2 - blob.b.y1)/2;
 	int radius = xl < yl ? xl : yl;
-	radius /=2;
 
-	int x1 = b.s.x - radius;
-	int x2 = b.s.x + radius;
-	// tan(alpha) = a/b => a = tan(alpha)*b
-	int y1 = (int)(tan(b.v1.alpha) * radius);
-	int y2 = b.s.y - y1;
-	y1 = b.s.y + y1;
+	a = (int)(sin(blob.v1.alpha)*(float)radius);	// delta y
+	// cos(alpha)=b/c
+	b = (int)(cos(blob.v1.alpha)*(float)radius);	// delta x
 
-	drawLine(img,x1,y1,x2,y2,label);
+	a2 = (int)(sin(blob.v1.beta)*(float)radius);	// delta y
+	b2 = (int)(cos(blob.v1.beta)*(float)radius);
+
+
+	if((blob.v1.x > 0 && blob.v1.y > 0) || (blob.v1.x < 0 && blob.v1.y < 0)){
+		// sin(alpha)=a/c
+		x0 = blob.s.x - b;
+		y0 = blob.s.y - a;
+		x1 = blob.s.x + b;
+		y1 = blob.s.y + a;
+		drawLine(img,x0,y0,x1,y1,label);
+
+		x1 = blob.s.x + b2;
+		y1 = blob.s.y - a2;
+		x0 = blob.s.x - b2;
+		y0 = blob.s.y + a2;
+		drawLine(img,x0,y0,x1,y1,label);
+		printf("case a\n");
+
+	}else{
+		x0 = blob.s.x + b;
+		y0 = blob.s.y - a;
+		x1 = blob.s.x - b;
+		y1 = blob.s.y + a;
+		drawLine(img,x0,y0,x1,y1,label);
+
+		x1 = blob.s.x + b2;
+		y1 = blob.s.y + a2;
+		x0 = blob.s.x - b2;
+		y0 = blob.s.y - a2;
+		drawLine(img,x0,y0,x1,y1,label);
+		printf("case b\n");
+
+	}
+
+
+	//drawLine(img,x0,y0,x1,y1,label);
 }
 
 

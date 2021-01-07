@@ -1177,8 +1177,8 @@ void print_menu_segmentierung(int threshold, int intervall[3], int blob_label, i
 	printf("  1. Thresholding (manuell)                    :  \n");
 	printf("  2. Thresholding (von Otsu)                   [ ]\n");
 	printf("  3. Blob-Coloring 1 GW:Marker (Bereich)       :  \n");
-	printf("  4. Blob-Coloring 2 GW:Image  (Bereich)       :  \n");
-	printf("  5. Blob-Coloring 3 GW:Image  (Bereich)       :  \n");
+	printf("  4. Fast Blob Coloring                        :  \n");
+	printf("  5. Erkenne IC                                :  \n");
 	printf("  6. Schwerpunkt                     Blob Label:  \n");
 	printf("  7. Groesster Blob                 Hintergrund:  \n");
 	printf("  8. Rotation                        Blob Label:  \n");
@@ -1421,7 +1421,7 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 2:
 					cls();
-					//blob_coloring_markersensitiv(img, img2,iIMG, intervall[0], 1);
+
 					break;
 				case 3:
 					cls();
@@ -1430,11 +1430,11 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 4:
 					cls();
-					//blob_coloring_imagesensitiv(img, img2, iIMG, intervall[2],1,1,1);
+					get_integratedCircuit();
 					break;
 				case 5:
 					cls();
-					zeige_schwerpunkt(img, (unsigned int)blob_label);
+					//zeige_schwerpunkt(img, (unsigned int)blob_label);
 					break;
 				case 6:
 					cls();
@@ -1635,29 +1635,23 @@ extern void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned ch
 extern Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Blob blob);
 extern void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval);
 //int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
+extern void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob blob);
 int main() {
 
-if(1){
-	unsigned char image[MAXXDIM][MAXYDIM];
-	unsigned char image2[MAXXDIM][MAXYDIM];
-	unsigned int iIMG[MAXXDIM][MAXYDIM];
-/*
-	memset(image, 0, sizeof(unsigned char)*MAXXDIM*MAXYDIM);
-	drawLine(image, 10,20, 200,150, 255);
-	writeImage_ppm(image, MAXXDIM, MAXYDIM);
-	return 0;
-*/
-	BlobColoring ColInfo;
+if(0){
+	unsigned char image[MAXYDIM][MAXXDIM];
+	memset(image, 0, sizeof(unsigned char )*MAXXDIM*MAXYDIM);
 	readImage_ppm(image);
-
-	Blob s = schwerpunkt(image,255);
-
-	Blob b = blobOrientationPCA(image,255,s);
+	Blob s = schwerpunkt(image,0);
+	Blob b = blobOrientationPCA(image,0,s);
+	b.blob_label = 255;
 	show_orientation(image,b, 128);
+	zeige_schwerpunkt(image, b);
 	writeImage_ppm(image, MAXXDIM, MAXYDIM);
 
-	return 0;
 
+	return 0;
+/*
 	segmentierung_binaer(image,127);
 	writeImage_ppm(image, MAXXDIM, MAXYDIM);
 
@@ -1676,6 +1670,7 @@ if(1){
 	labelMatrixToImage(iIMG,image, &ColInfo);
 	labelMatrixToImage(iIMG,image2, &ColInfo);
 	writeImage_ppm(image2, MAXXDIM, MAXYDIM);
+	*/
 
 	//blob_coloring_imagesensitiv(image, image2, iIMG, 10, 1, 1, 1);
 	//fast_blob_coloring(image,10);
