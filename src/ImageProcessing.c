@@ -1638,7 +1638,7 @@ extern void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t 
 extern void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob blob);
 int main() {
 
-if(0){
+if(1){
 	unsigned char image[MAXYDIM][MAXXDIM];
 	memset(image, 0, sizeof(unsigned char )*MAXXDIM*MAXYDIM);
 	readImage_ppm(image);

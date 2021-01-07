@@ -1438,26 +1438,29 @@ void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob blob, unsigned c
 
 	if((blob.v1.x > 0 && blob.v1.y > 0) || (blob.v1.x < 0 && blob.v1.y < 0)){
 		// sin(alpha)=a/c
+		// GOOD
 		x0 = blob.s.x - b;
 		y0 = blob.s.y - a;
 		x1 = blob.s.x + b;
 		y1 = blob.s.y + a;
 		drawLine(img,x0,y0,x1,y1,label);
 
-		x1 = blob.s.x + b2;
-		y1 = blob.s.y - a2;
-		x0 = blob.s.x - b2;
-		y0 = blob.s.y + a2;
+		x1 = blob.s.x - b2;
+		y1 = blob.s.y + a2;
+		x0 = blob.s.x + b2;
+		y0 = blob.s.y - a2;
 		drawLine(img,x0,y0,x1,y1,label);
 		printf("case a\n");
 
 	}else{
-		x0 = blob.s.x + b;
-		y0 = blob.s.y - a;
-		x1 = blob.s.x - b;
-		y1 = blob.s.y + a;
+		// GOOD
+		x0 = blob.s.x - b;
+		y0 = blob.s.y + a;
+		x1 = blob.s.x + b;
+		y1 = blob.s.y - a;
 		drawLine(img,x0,y0,x1,y1,label);
 
+		// GOOD
 		x1 = blob.s.x + b2;
 		y1 = blob.s.y + a2;
 		x0 = blob.s.x - b2;
