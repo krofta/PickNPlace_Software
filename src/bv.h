@@ -1,4 +1,5 @@
 #include "image_io.h"
+#include "fonts.h"
 
 // Strukturen zur vereinfachung
 
@@ -11,15 +12,20 @@ typedef struct {
 } BoundaryBox;
 
 typedef struct {
-	unsigned int x;	// Schwerpunkt x
-	unsigned int y;	// Schwerpunkt y
+	float fx;	// Schwerpunkt x
+	float fy;	// Schwerpunkt y
+	int x;
+	int y;
 	//Box boundary_box;	// Boundary Box des Objektes
 } Schwerpunkt;
 
 typedef struct{
-	long int Ix;	// Widerstandsmoment in x Richtung
-	long int Iy;	// Widerstandsmoment in y Richtung
-	long int Ixy;	// Deviationsmoment in xy Richtung
+	double fIx;	// axiales Flächenmoment in x Richtung
+	double fIy;	// axiales Flächenmoment in y Richtung
+	double fIxy;	// biaxiales Flächenmoment in xy Richtung
+
+	double orientation;	// drehung der Hauptachsen radiant
+	double orientation_deg;	// drehung der Hauptachsen degrees
 } Momente;
 
 typedef struct{
@@ -41,6 +47,8 @@ typedef struct {
      Schwerpunkt s;
      Vertex v1;	// Eigenvektor 1
      Vertex v2; // Eigenvektor 2
+     float o; 	// Orientation in rad
+     float o_deg;	// orientation in deg;
 } Blob;
 
 
@@ -98,12 +106,12 @@ void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[
 
 
 // Merkmalsextraktion
-void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob blob);
-Blob schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], unsigned int bloblabel);
-Momente widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Blob b, unsigned int object_label);
-void zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], unsigned int object_label);
-double blobOrientationMoments(Momente m);
-Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Blob blob);
+int zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob *blob);
+int schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], Blob *s);
+//int widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Blob *b);
+int zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], Blob *blob);
+//int blobOrientationMoments(Blob *blob);
+int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], Blob *blob);
 
 // Hilfsfunktionen
 void init_cMatrix(unsigned char cMatrix[MAXXDIM][MAXYDIM], unsigned char val);
@@ -117,11 +125,13 @@ void bubblesort(int *array, int length);
 void reset_blob_label(int iIMG[MAXXDIM][MAXYDIM], int oldLabel, int newLabel);
 int solveQuadricFunction(float a, float b, float c,float *n1, float *n2);
 
-void get_integratedCircuit();
-
+void get_integratedCircuit(unsigned char img[MAXYDIM][MAXXDIM]);
 // Annotation Functions
-void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob blob, unsigned char label);
+void show_orientation(unsigned char img[MAXYDIM][MAXXDIM], Blob *blob, unsigned char label);
 void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval) ;
+void drawCircle(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint8_t r, unsigned char  greyval);
+void writeChar(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, char ch, FontDef font);
+void writeString(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x, uint16_t y, const char *str, FontDef font);
 
 
 // Aussortiert

@@ -16,6 +16,7 @@
 #include "bv.h"
 #include "image_io.h"
 
+
 void printline(){
 	printf(" __________________________________________________\n");
 }
@@ -1430,7 +1431,7 @@ void menu_segmentierung(unsigned char img[MAXXDIM][MAXYDIM], unsigned char img2[
 					break;
 				case 4:
 					cls();
-					get_integratedCircuit();
+					get_integratedCircuit(img);
 					break;
 				case 5:
 					cls();
@@ -1631,22 +1632,48 @@ extern void segmentierung_binaer(unsigned char img[MAXXDIM][MAXYDIM], int thresh
 extern int bwLabel(unsigned char img[MAXXDIM][MAXYDIM],unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
 extern int bwLabelDeleteSmallBlobs(unsigned int label[MAXXDIM][MAXYDIM], int minBlobSize, BlobColoring *ColInfo);
 extern int bwLabelJoinBlobs(unsigned int label[MAXYDIM][MAXXDIM], BlobColoring *ColInfo);
-extern void labelMatrixToImage(unsigned int label[MAXYDIM][MAXXDIM], unsigned char img[MAXYDIM][MAXXDIM],BlobColoring *ColInfo);
-extern Blob blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], unsigned char blob_label, Blob blob);
+
 extern void drawLine(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1, unsigned char greyval);
+extern void drawCircle(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, uint8_t r, unsigned char  greyval);
 //int bwLabelThresholding(unsigned char img[MAXXDIM][MAXYDIM], int thresholdSteps, int minBlobSize);
-extern void zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob blob);
+extern int zeige_schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM],Blob *blob);
+extern int schwerpunkt(unsigned char img[MAXXDIM][MAXYDIM], Blob *s);
+extern int widerstandsmomente(unsigned char img[MAXXDIM][MAXYDIM],Blob *b);
+extern int zeige_rotation(unsigned char img[MAXXDIM][MAXYDIM], Blob *blob);
+extern int blobOrientationMoments(Blob *blob);
+extern int blobOrientationPCA(unsigned char img[MAXYDIM][MAXXDIM], Blob *blob);
+extern void writeChar(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x0, uint16_t y0, char ch, FontDef font);
+extern void writeString(unsigned char img[MAXYDIM][MAXXDIM], uint16_t x, uint16_t y, const char *str, FontDef font);
+#include "fonts.h"
+extern FontDef F_7x10;
+extern FontDef F_11x18;
+extern FontDef F_16x26;
 int main() {
+
+	if(0){
+		unsigned char image[MAXYDIM][MAXXDIM];
+		memset(image, 0, sizeof(unsigned char )*MAXXDIM*MAXYDIM);
+		writeString(image, 0, 0, "PIMMEL",F_7x10);
+		writeImage_ppm(image, MAXXDIM, MAXYDIM);
+		return 0;
+	}
 
 if(1){
 	unsigned char image[MAXYDIM][MAXXDIM];
 	memset(image, 0, sizeof(unsigned char )*MAXXDIM*MAXYDIM);
 	readImage_ppm(image);
-	Blob s = schwerpunkt(image,0);
-	Blob b = blobOrientationPCA(image,0,s);
-	b.blob_label = 255;
-	show_orientation(image,b, 128);
-	zeige_schwerpunkt(image, b);
+	Blob blob;
+	blob.blob_label = 0;
+	memset(&blob,0, sizeof(Blob));
+	schwerpunkt(image,&blob);
+	//widerstandsmomente(image,&blob);
+	//blobOrientationMoments(&blob);
+	if(blobOrientationPCA(image,&blob)){
+		printf("failed to find eigenvectors\n");
+		return 0;
+	}
+	show_orientation(image,&blob,128);
+	zeige_schwerpunkt(image,&blob);
 	writeImage_ppm(image, MAXXDIM, MAXYDIM);
 
 
